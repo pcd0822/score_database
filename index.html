@@ -502,6 +502,10 @@
             };
 
             // Check for access token
+            if (!tokenClient) {
+                alert("Google 인증 모듈이 아직 로드되지 않았습니다. 3초 뒤에 다시 시도해주세요.");
+                return;
+            }
             requestAccessToken();
         }
 
@@ -517,11 +521,18 @@
         function requestAccessToken() {
             tokenClient.callback = async (resp) => {
                 if (resp.error !== undefined) {
+                    console.error("Auth Error", resp);
+                    alert("인증 오류가 발생했습니다: " + JSON.stringify(resp));
                     throw (resp);
                 }
                 console.log("Access Token Received");
-                await setupSpreadsheet(); // Check/Create sheets
-                showTeacherDashboard();
+                try {
+                    await setupSpreadsheet(); // Check/Create sheets
+                    showTeacherDashboard();
+                } catch (err) {
+                    console.error("Spreadsheet Setup Error", err);
+                    alert("스프레드시트 설정 중 오류가 발생했습니다. 콘솔을 확인하세요.\n" + (err.result?.error?.message || err.message));
+                }
             };
 
             if (gapi.client.getToken() === null) {
@@ -537,8 +548,6 @@
         // Sheets Logic
         async function setupSpreadsheet() {
             if (!spreadsheetId) {
-                // Create a new spreadsheet if one doesn't exist (or ask user to pick one - simplifying to create new or pick existing)
-                // For simplicity, let's create a new one named "Smart Grading System DB" if not stored
                 try {
                     const response = await gapi.client.sheets.spreadsheets.create({
                         resource: {
@@ -550,14 +559,31 @@
                     spreadsheetId = response.result.spreadsheetId;
                     localStorage.setItem('grading_spreadsheet_id', spreadsheetId);
                     console.log("Created Dashboard: " + spreadsheetId);
+
+                    // New sheet needs headers
+                    await ensureSheetsExist();
+
                 } catch (err) {
                     console.error("Error creating spreadsheet", err);
-                    alert("스프레드시트 생성 실패. 콘솔을 확인하세요.");
-                    return;
+                    // Handle 403 Forbidden specifically?
+                    throw err;
+                }
+            } else {
+                try {
+                    await ensureSheetsExist();
+                } catch (err) {
+                    // If 404 (Not Found), maybe ID is invalid or deleted.
+                    if (err.status === 404 || (err.result && err.result.error && err.result.error.code === 404)) {
+                        if (confirm("기존 스프레드시트를 찾을 수 없습니다. (삭제됨?). 새로 생성하시겠습니까?")) {
+                            spreadsheetId = '';
+                            localStorage.removeItem('grading_spreadsheet_id');
+                            return setupSpreadsheet(); // Retry create
+                        }
+                    } else {
+                        throw err;
+                    }
                 }
             }
-
-            await ensureSheetsExist();
         }
 
         async function ensureSheetsExist() {
