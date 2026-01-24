@@ -740,6 +740,9 @@
                         allAnswers = aRes.result.values.map(r => ({
                             timestamp: r[0], sid: r[1], name: r[2], email: r[3], qId: r[4], answer: r[5]
                         }));
+                    } else {
+                        console.log("No answers found.");
+                        allAnswers = [];
                     }
 
                     // Load Scores
@@ -752,11 +755,20 @@
                         allScores = sRes.result.values.map(r => ({
                             sid: r[1], qId: r[3], score: r[4], feedback: r[5]
                         }));
+                    } else {
+                        allScores = [];
                     }
+
+                    console.log("Dashboard Data Loaded:", {
+                        questions: allQuestions.length,
+                        answers: allAnswers.length,
+                        scores: allScores.length
+                    });
 
                     renderDashboard();
                 } catch (err) {
                     console.error("Dashboard Load Error", err);
+                    // If 403, might need re-auth, but usually token is there.
                 }
             }
 
@@ -764,10 +776,15 @@
                 const container = document.getElementById('folders-container');
                 container.innerHTML = '';
 
+                if (allQuestions.length === 0) {
+                    container.innerHTML = '<p class="text-gray col-span-3 text-center">등록된 문제가 없습니다. 문제를 먼저 출제해주세요.</p>';
+                    return;
+                }
+
                 // Cluster by Group
                 const groups = [...new Set(allQuestions.map(q => q.group || '기본 그룹'))];
 
-                if (groups.length === 0 && allQuestions.length > 0) groups.push('Uncategorized');
+                if (groups.length === 0 && allQuestions.length > 0) groups.push('기본 그룹');
 
                 groups.forEach(groupName => {
                     // Counts
