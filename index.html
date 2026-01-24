@@ -147,7 +147,7 @@
 
         .btn-secondary {
             background: rgba(255, 255, 255, 0.1);
-            color: var(--text-light);
+            color: var(--text-color);
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
@@ -156,11 +156,12 @@
         }
 
         .card {
-            background: var(--bg-card);
+            background-color: var(--card-bg);
             border-radius: 1rem;
             padding: 2rem;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: background-color 0.3s;
             backdrop-filter: blur(10px);
         }
 
@@ -180,20 +181,27 @@
         input,
         select,
         textarea {
-            background: rgba(15, 23, 42, 0.5);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background-color: rgba(0, 0, 0, 0.1);
+            /* transparent-ish */
+            border: 1px solid var(--secondary-color);
+            color: var(--text-color);
             border-radius: 0.5rem;
             padding: 0.75rem;
-            color: var(--text-light);
             font-size: 1rem;
             transition: border-color 0.3s;
+        }
+
+        [data-theme="light"] input,
+        [data-theme="light"] select,
+        [data-theme="light"] textarea {
+            background-color: #f9fafb;
         }
 
         input:focus,
         select:focus,
         textarea:focus {
             outline: none;
-            border-color: var(--primary);
+            border-color: var(--primary-color);
         }
 
         /* Animations */
@@ -219,39 +227,53 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: radial-gradient(circle at top right, #1e1b4b, var(--bg-dark));
+            background: radial-gradient(circle at top right, #1e1b4b, var(--bg-color));
         }
 
         .dashboard-grid {
-            display: grid;
-            grid-template-columns: 250px 1fr;
+            display: flex;
             height: 100vh;
         }
 
         .sidebar {
-            background: var(--bg-card);
-            border-right: 1px solid rgba(255, 255, 255, 0.05);
-            padding: 2rem 1rem;
+            width: 250px;
+            background-color: var(--card-bg);
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
         }
 
         .nav-item {
             padding: 1rem;
-            color: var(--text-gray);
+            margin-bottom: 0.5rem;
             cursor: pointer;
             border-radius: 0.5rem;
             transition: all 0.2s;
-            margin-bottom: 0.5rem;
         }
 
         .nav-item:hover,
         .nav-item.active {
-            background: rgba(99, 102, 241, 0.1);
-            color: var(--primary);
+            background-color: var(--primary-color);
+            color: white;
         }
 
-        .main-content {
-            padding: 2rem;
-            overflow-y: auto;
+        /* Theme Selector */
+        #theme-selector {
+            position: fixed;
+            bottom: 2rem;
+            left: 2rem;
+            z-index: 100;
+            background: var(--card-bg);
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--secondary-color);
         }
 
         /* Modal */
@@ -274,23 +296,28 @@
 <body>
 
     <!-- Login View -->
-    <div id="login-view" class="fade-in">
-        <div class="card text-center max-w-lg w-full">
+    <div id="login-view" class="fade-in flex justify-center items-center h-screen">
+        <div class="card text-center max-w-md w-full mx-auto shadow-2xl">
             <h1 class="text-3xl font-bold mb-4"
                 style="background: linear-gradient(to right, #818cf8, #c084fc); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">
                 Smart AI Grading
             </h1>
             <p class="text-gray mb-8">구글 계정으로 로그인하여 시작하세요.</p>
-            <div id="g_id_onload"
-                data-client_id="837113843065-r43b5g2f283ma3393nke4fcf25v0afi8.apps.googleusercontent.com"
-                data-callback="handleCredentialResponse" data-auto_select="false">
-            </div>
-            <div class="g_id_signin" data-type="standard" data-size="large" data-theme="filled_blue"
-                data-text="sign_in_with" data-shape="rectangular" data-logo_alignment="left"></div>
 
-            <div class="mt-4">
-                <button onclick="showStudentLogin()" class="btn btn-secondary w-full">학생으로 시작하기</button>
+            <div class="flex justify-center">
+                <div id="g_id_onload"
+                    data-client_id="837113843065-r43b5g2f283ma3393nke4fcf25v0afi8.apps.googleusercontent.com"
+                    data-callback="handleCredentialResponse" data-auto_select="false">
+                </div>
+                <div class="g_id_signin" data-type="standard" data-size="large" data-theme="filled_blue"
+                    data-text="sign_in_with" data-shape="rectangular" data-logo_alignment="left">
+                </div>
             </div>
+
+            <button onclick="showStudentLogin()"
+                class="mt-8 text-sm text-gray hover:text-white underline block mx-auto">
+                학생으로 시작하기
+            </button>
         </div>
     </div>
 
@@ -349,527 +376,614 @@
             <!-- Quiz Setup Tab -->
             <div id="tab-quiz-setup" class="fade-in">
                 <h2 class="text-2xl font-bold mb-6">문제 출제</h2>
-                <div class="card mb-6">
-                    <div class="flex gap-4 mb-4">
-                        <select id="question-type" class="w-full">
-                            <option value="choice">선택형</option>
-                            <option value="short">단답형</option>
-                            <option value="essay">서논술형</option>
-                        </select>
-                        <input type="number" id="question-points" placeholder="배점" class="w-24">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="card">
+                        <h3 class="text-xl mb-4">문제 입력</h3>
+
+                        <div class="input-group">
+                            <label>문제 그룹 (폴더명)</label>
+                            <input type="text" id="question-group" placeholder="예: 1학기 중간고사, 수학 1단원 등">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="input-group">
+                                <label>유형</label>
+                                <select id="question-type" onchange="toggleQuestionInputs()">
+                                    <option value="choice">선택형</option>
+                                    <option value="short">단답형</option>
+                                    <option value="essay">서논술형</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>배점</label>
+                                <input type="number" id="question-points" placeholder="예: 5">
+                            </div>
+                        </div>
+
+                        <div class="input-group">
+                            <label>문제 내용</label>
+                            <textarea id="question-content" rows="3" placeholder="문제를 입력하세요"></textarea>
+                        </div>
+
+                        <!-- Options for Choice -->
+                        <div id="options-container" class="input-group">
+                            <label>선택지 (옵션 추가)</label>
+                            <div id="options-list" class="space-y-2 mb-2">
+                                <!-- Dynamic Options -->
+                            </div>
+                            <button onclick="addOption()" class="btn btn-secondary text-sm w-full">+ 선택지 추가</button>
+                        </div>
+
+                        <div class="input-group">
+                            <label>정답</label>
+                            <input type="text" id="question-answer" placeholder="정답 입력 (선택형은 번호 혹은 내용)">
+                        </div>
+
+                        <!-- 5-Scale Rubric for Essay -->
+                        <div id="rubric-container" class="input-group hidden">
+                            <label class="text-accent mb-2 block">AI 채점 기준 (5단계 척도)</label>
+                            <div class="space-y-2">
+                                <input type="text" id="rubric-5" placeholder="5점 기준 (탁월): 예) 핵심 키워드 3개 모두 포함...">
+                                <input type="text" id="rubric-4" placeholder="4점 기준 (우수): 예) 핵심 키워드 2개 포함...">
+                                <input type="text" id="rubric-3" placeholder="3점 기준 (보통): 예) 핵심 키워드 1개 포함...">
+                                <input type="text" id="rubric-2" placeholder="2점 기준 (미흡): 예) 관련 내용이나 키워드 누락...">
+                                <input type="text" id="rubric-1" placeholder="1점 기준 (부족): 예) 내용 불일치...">
+                            </div>
+                        </div>
+
+                        <div class="input-group hidden" id="old-criteria-group">
+                            <!-- Legacy support or hidden -->
+                        </div>
+
+                        <div class="input-group">
+                            <label>해설</label>
+                            <textarea id="question-explanation" rows="2" placeholder="해설을 입력하세요"></textarea>
+                        </div>
+
+                        <button onclick="addQuestion()" class="btn btn-primary w-full">문제 추가하기</button>
                     </div>
 
-                    <div class="input-group">
-                        <label>문제 내용</label>
-                        <textarea id="question-content" rows="3" placeholder="문제를 입력하세요"></textarea>
+                    <div class="card">
+                        <h3 class="text-xl mb-4">출제된 문제 목록</h3>
+                        <div id="questions-list">
+                            <!-- Questions will be listed here -->
+                            <div class="p-4 border border-white/10 rounded mb-2">
+                                아직 등록된 문제가 없습니다.
+                            </div>
+                        </div>
+                        <button onclick="saveToSheets()" class="btn btn-success w-full mt-4">구글 시트에 저장 & 학생에게
+                            내보내기</button>
                     </div>
+                </div>
 
-                    <div id="answer-section" class="input-group">
-                        <label>정답 (모범답안)</label>
-                        <input type="text" id="question-answer" placeholder="정답을 입력하세요">
-                    </div>
-
-                    <div id="criteria-section" class="input-group hidden">
-                        <label>채점 기준 (5단계 척도)</label>
-                        <textarea id="question-criteria" rows="3" placeholder="채점 기준을 상세히 입력하세요"></textarea>
-                        <label class="mt-2">단계별 점수 설정</label>
-                        <div class="flex gap-2">
-                            <input type="number" placeholder="5점" class="w-full">
-                            <input type="number" placeholder="4점" class="w-full">
-                            <input type="number" placeholder="3점" class="w-full">
-                            <input type="number" placeholder="2점" class="w-full">
-                            <input type="number" placeholder="1점" class="w-full">
+                <!-- Results Tab -->
+                <div id="tab-results" class="hidden fade-in">
+                    <h2 class="text-2xl font-bold mb-6">채점 및 결과</h2>
+                    <div class="flex gap-4 mb-6">
+                        <div class="card flex-1">
+                            <h3 class="text-gray mb-2">제출된 답안</h3>
+                            <p class="text-3xl font-bold">0</p>
+                        </div>
+                        <div class="card flex-1">
+                            <h3 class="text-gray mb-2">채점 완료</h3>
+                            <p class="text-3xl font-bold">0</p>
                         </div>
                     </div>
 
-                    <div class="input-group">
-                        <label>해설 (선택형/단답형)</label>
-                        <textarea id="question-explanation" rows="2" placeholder="해설을 입력하세요"></textarea>
-                    </div>
-
-                    <button onclick="addQuestion()" class="btn btn-primary w-full">문제 추가하기</button>
-                </div>
-
-                <div class="card">
-                    <h3 class="text-xl mb-4">출제된 문제 목록</h3>
-                    <div id="questions-list">
-                        <!-- Questions will be listed here -->
-                        <div class="p-4 border border-white/10 rounded mb-2">
-                            아직 등록된 문제가 없습니다.
+                    <div class="card mb-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl">문항별 폴더</h3>
+                            <div class="flex gap-2">
+                                <button onclick="loadDashboardData()" class="btn btn-secondary">새로고침</button>
+                                <button onclick="runAutoGrading()" class="btn btn-primary">AI 채점 시작</button>
+                            </div>
+                        </div>
+                        <div id="folders-container" class="flex flex-wrap gap-4">
+                            <!-- Question Folders -->
                         </div>
                     </div>
-                    <button onclick="saveToSheets()" class="btn btn-success w-full mt-4">구글 시트에 저장 & 학생에게 내보내기</button>
-                </div>
-            </div>
 
-            <!-- Results Tab -->
-            <div id="tab-results" class="hidden fade-in">
-                <h2 class="text-2xl font-bold mb-6">채점 및 결과</h2>
-                <div class="flex gap-4 mb-6">
-                    <div class="card flex-1">
-                        <h3 class="text-gray mb-2">제출된 답안</h3>
-                        <p class="text-3xl font-bold">0</p>
-                    </div>
-                    <div class="card flex-1">
-                        <h3 class="text-gray mb-2">채점 완료</h3>
-                        <p class="text-3xl font-bold">0</p>
-                    </div>
-                </div>
-
-                <div class="card mb-6">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-xl">문항별 폴더</h3>
-                        <div class="flex gap-2">
-                            <button onclick="loadDashboardData()" class="btn btn-secondary">새로고침</button>
-                            <button onclick="runAutoGrading()" class="btn btn-primary">AI 채점 시작</button>
+                    <!-- Expanded Folder View (Hidden by default) -->
+                    <div id="folder-detail-view" class="hidden card mt-4">
+                        <div class="flex justify-between mb-4">
+                            <h3 id="folder-title" class="text-xl font-bold">Q_ID Detail</h3>
+                            <button onclick="closeFolder()" class="btn btn-secondary text-sm">닫기</button>
                         </div>
+                        <div id="folder-answers-list" class="space-y-4"></div>
                     </div>
-                    <div id="folders-container" class="flex flex-wrap gap-4">
-                        <!-- Question Folders -->
-                    </div>
-                </div>
-
-                <!-- Expanded Folder View (Hidden by default) -->
-                <div id="folder-detail-view" class="hidden card mt-4">
-                    <div class="flex justify-between mb-4">
-                        <h3 id="folder-title" class="text-xl font-bold">Q_ID Detail</h3>
-                        <button onclick="closeFolder()" class="btn btn-secondary text-sm">닫기</button>
-                    </div>
-                    <div id="folder-answers-list" class="space-y-4"></div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- JS Logic -->
-    <script>
-        // Google API Config
-        // IMPORTANT: Replace these with your actual credentials
-        const CLIENT_ID = '837113843065-r43b5g2f283ma3393nke4fcf25v0afi8.apps.googleusercontent.com';
-        const API_KEY = 'AIzaSyAZ93RRH3OWFFp0stUEXNtnNHZPDgcaMIM';
-        const DISCOVERY_DOC = 'https://sheets.googleapis.com/$discovery/rest?version=v4';
-        const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/gmail.send';
+        <!-- JS Logic -->
+        <script>
+            // Google API Config
+            // IMPORTANT: Replace these with your actual credentials
+            const CLIENT_ID = '837113843065-r43b5g2f283ma3393nke4fcf25v0afi8.apps.googleusercontent.com';
+            const API_KEY = 'AIzaSyAZ93RRH3OWFFp0stUEXNtnNHZPDgcaMIM';
+            const DISCOVERY_DOC = 'https://sheets.googleapis.com/$discovery/rest?version=v4';
+            const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/gmail.send';
 
-        let tokenClient;
-        let gapiInited = false;
-        let gisInited = false;
-        let spreadsheetId = localStorage.getItem('grading_spreadsheet_id') || '';
+            let tokenClient;
+            let gapiInited = false;
+            let gisInited = false;
+            let spreadsheetId = localStorage.getItem('grading_spreadsheet_id') || '';
 
-        // State Management
-        let currentUser = null;
-        let questions = [];
+            // State Management
+            let currentUser = null;
+            let questions = [];
 
-        // Initialize Google API
-        function gapiLoaded() {
-            gapi.load('client', initializeGapiClient);
-        }
-
-        async function initializeGapiClient() {
-            await gapi.client.init({
-                apiKey: API_KEY,
-                discoveryDocs: [DISCOVERY_DOC],
-            });
-            gapiInited = true;
-            maybeEnableButtons();
-        }
-
-        function gisLoaded() {
-            tokenClient = google.accounts.oauth2.initTokenClient({
-                client_id: CLIENT_ID,
-                scope: SCOPES,
-                callback: '', // defined later
-            });
-            gisInited = true;
-            maybeEnableButtons();
-        }
-
-        function maybeEnableButtons() {
-            if (gapiInited && gisInited) {
-                console.log("Google API Initialized");
+            // Initialize Google API
+            function gapiLoaded() {
+                gapi.load('client', initializeGapiClient);
             }
-        }
 
-        // Auth Logic
-        function handleCredentialResponse(response) {
-            console.log("Encoded JWT ID token: " + response.credential);
-            const responsePayload = decodeJwtResponse(response.credential);
-
-            currentUser = {
-                email: responsePayload.email,
-                name: responsePayload.name,
-                picture: responsePayload.picture,
-                role: 'teacher' // Defaulting to teacher for the auth flow
-            };
-
-            // Check for access token
-            if (!tokenClient) {
-                alert("Google 인증 모듈이 아직 로드되지 않았습니다. 3초 뒤에 다시 시도해주세요.");
-                return;
+            async function initializeGapiClient() {
+                await gapi.client.init({
+                    apiKey: API_KEY,
+                    discoveryDocs: [DISCOVERY_DOC],
+                });
+                gapiInited = true;
+                maybeEnableButtons();
             }
-            requestAccessToken();
-        }
 
-        function decodeJwtResponse(token) {
-            var base64Url = token.split('.')[1];
-            var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            var jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function (c) {
-                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-            }).join(''));
-            return JSON.parse(jsonPayload);
-        }
+            function gisLoaded() {
+                tokenClient = google.accounts.oauth2.initTokenClient({
+                    client_id: CLIENT_ID,
+                    scope: SCOPES,
+                    callback: '', // defined later
+                });
+                gisInited = true;
+                maybeEnableButtons();
+            }
 
-        function requestAccessToken() {
-            tokenClient.callback = async (resp) => {
-                if (resp.error !== undefined) {
-                    console.error("Auth Error", resp);
-                    alert("인증 오류가 발생했습니다: " + JSON.stringify(resp));
-                    throw (resp);
+            function maybeEnableButtons() {
+                if (gapiInited && gisInited) {
+                    console.log("Google API Initialized");
                 }
-                console.log("Access Token Received");
-                try {
-                    await setupSpreadsheet(); // Check/Create sheets
-                    showTeacherDashboard();
-                } catch (err) {
-                    console.error("Spreadsheet Setup Error", err);
-                    alert("스프레드시트 설정 중 오류가 발생했습니다. 콘솔을 확인하세요.\n" + (err.result?.error?.message || err.message));
-                }
-            };
-
-            if (gapi.client.getToken() === null) {
-                // Prompt the user to select a Google Account and ask for consent to share their data
-                // when establishing a new session.
-                tokenClient.requestAccessToken({ prompt: 'consent' });
-            } else {
-                // Skip display of account chooser and consent dialog for an existing session.
-                tokenClient.requestAccessToken({ prompt: '' });
             }
-        }
 
-        // Sheets Logic
-        async function setupSpreadsheet() {
-            if (!spreadsheetId) {
-                try {
-                    const response = await gapi.client.sheets.spreadsheets.create({
-                        resource: {
-                            properties: {
-                                title: "Smart Grading System DB",
+            // Auth Logic
+            function handleCredentialResponse(response) {
+                console.log("Encoded JWT ID token: " + response.credential);
+                const responsePayload = decodeJwtResponse(response.credential);
+
+                currentUser = {
+                    email: responsePayload.email,
+                    name: responsePayload.name,
+                    picture: responsePayload.picture,
+                    role: 'teacher' // Defaulting to teacher for the auth flow
+                };
+
+                // Check for access token
+                if (!tokenClient) {
+                    alert("Google 인증 모듈이 아직 로드되지 않았습니다. 3초 뒤에 다시 시도해주세요.");
+                    return;
+                }
+                requestAccessToken();
+            }
+
+            function decodeJwtResponse(token) {
+                var base64Url = token.split('.')[1];
+                var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                var jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function (c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                return JSON.parse(jsonPayload);
+            }
+
+            function requestAccessToken() {
+                tokenClient.callback = async (resp) => {
+                    if (resp.error !== undefined) {
+                        console.error("Auth Error", resp);
+                        alert("인증 오류가 발생했습니다: " + JSON.stringify(resp));
+                        throw (resp);
+                    }
+                    console.log("Access Token Received");
+                    try {
+                        await setupSpreadsheet(); // Check/Create sheets
+                        showTeacherDashboard();
+                    } catch (err) {
+                        console.error("Spreadsheet Setup Error", err);
+                        alert("스프레드시트 설정 중 오류가 발생했습니다. 콘솔을 확인하세요.\n" + (err.result?.error?.message || err.message));
+                    }
+                };
+
+                if (gapi.client.getToken() === null) {
+                    // Prompt the user to select a Google Account and ask for consent to share their data
+                    // when establishing a new session.
+                    tokenClient.requestAccessToken({ prompt: 'consent' });
+                } else {
+                    // Skip display of account chooser and consent dialog for an existing session.
+                    tokenClient.requestAccessToken({ prompt: '' });
+                }
+            }
+
+            // Sheets Logic
+            async function setupSpreadsheet() {
+                if (!spreadsheetId) {
+                    try {
+                        const response = await gapi.client.sheets.spreadsheets.create({
+                            resource: {
+                                properties: {
+                                    title: "Smart Grading System DB",
+                                },
                             },
-                        },
-                    });
-                    spreadsheetId = response.result.spreadsheetId;
-                    localStorage.setItem('grading_spreadsheet_id', spreadsheetId);
-                    console.log("Created Dashboard: " + spreadsheetId);
+                        });
+                        spreadsheetId = response.result.spreadsheetId;
+                        localStorage.setItem('grading_spreadsheet_id', spreadsheetId);
+                        console.log("Created Dashboard: " + spreadsheetId);
 
-                    // New sheet needs headers
-                    await ensureSheetsExist();
+                        // New sheet needs headers
+                        await ensureSheetsExist();
 
-                } catch (err) {
-                    console.error("Error creating spreadsheet", err);
-                    // Handle 403 Forbidden specifically?
-                    throw err;
-                }
-            } else {
-                try {
-                    await ensureSheetsExist();
-                } catch (err) {
-                    // If 404 (Not Found), maybe ID is invalid or deleted.
-                    if (err.status === 404 || (err.result && err.result.error && err.result.error.code === 404)) {
-                        if (confirm("기존 스프레드시트를 찾을 수 없습니다. (삭제됨?). 새로 생성하시겠습니까?")) {
-                            spreadsheetId = '';
-                            localStorage.removeItem('grading_spreadsheet_id');
-                            return setupSpreadsheet(); // Retry create
-                        }
-                    } else {
+                    } catch (err) {
+                        console.error("Error creating spreadsheet", err);
+                        // Handle 403 Forbidden specifically?
                         throw err;
                     }
-                }
-            }
-        }
-
-        async function ensureSheetsExist() {
-            // Check existing sheets
-            try {
-                const response = await gapi.client.sheets.spreadsheets.get({
-                    spreadsheetId: spreadsheetId,
-                });
-
-                const sheets = response.result.sheets;
-                const sheetTitles = sheets.map(s => s.properties.title);
-
-                const requiredSheets = ['Quiz', 'answer', 'SCORE'];
-                const requests = [];
-
-                requiredSheets.forEach(title => {
-                    if (!sheetTitles.includes(title)) {
-                        requests.push({
-                            addSheet: {
-                                properties: {
-                                    title: title
-                                }
-                            }
-                        });
-                    }
-                });
-
-                if (requests.length > 0) {
-                    await gapi.client.sheets.spreadsheets.batchUpdate({
-                        spreadsheetId: spreadsheetId,
-                        resource: {
-                            requests: requests,
-                        },
-                    });
-                    console.log("Created missing sheets");
-                }
-
-                // Initialize headers if needed (simplified)
-            } catch (err) {
-                console.error("Error checking sheets", err);
-            }
-        }
-
-        // Navigation Logic
-        function showLogin() {
-            document.getElementById('login-view').classList.remove('hidden');
-            document.getElementById('student-login-view').classList.add('hidden');
-            document.getElementById('teacher-dashboard').classList.add('hidden');
-        }
-
-        function showStudentLogin() {
-            document.getElementById('login-view').classList.add('hidden');
-            document.getElementById('student-login-view').classList.remove('hidden');
-        }
-
-        function logout() {
-            google.accounts.id.disableAutoSelect();
-            currentUser = null;
-            showLogin();
-        }
-
-        function showTeacherDashboard() {
-            document.getElementById('login-view').classList.add('hidden');
-            document.getElementById('teacher-dashboard').classList.remove('hidden');
-            document.getElementById('teacher-dashboard').classList.add('flex');
-            loadDashboardData();
-        }
-
-        let allAnswers = [];
-        let allScores = [];
-        let allQuestions = [];
-
-        async function loadDashboardData() {
-            try {
-                // Load Questions
-                const qRes = await gapi.client.sheets.spreadsheets.values.get({
-                    spreadsheetId: spreadsheetId,
-                    range: 'Quiz!A2:G'
-                });
-                if (qRes.result.values) {
-                    allQuestions = qRes.result.values.map(r => ({
-                        id: r[0], type: r[1], points: r[2], content: r[3], answer: r[4], criteria: r[5], explanation: r[6]
-                    }));
-                }
-
-                // Load Answers
-                const aRes = await gapi.client.sheets.spreadsheets.values.get({
-                    spreadsheetId: spreadsheetId,
-                    range: 'answer!A2:F'
-                });
-                if (aRes.result.values) {
-                    // [Timestamp, StudentID, Name, Email, Q_ID, Answer]
-                    allAnswers = aRes.result.values.map(r => ({
-                        timestamp: r[0], sid: r[1], name: r[2], email: r[3], qId: r[4], answer: r[5]
-                    }));
-                }
-
-                // Load Scores
-                const sRes = await gapi.client.sheets.spreadsheets.values.get({
-                    spreadsheetId: spreadsheetId,
-                    range: 'SCORE!A2:G'
-                });
-                if (sRes.result.values) {
-                    // [Timestamp, StudentID, Name, Q_ID, Score, Feedback, Type] assuming structure
-                    allScores = sRes.result.values.map(r => ({
-                        sid: r[1], qId: r[3], score: r[4], feedback: r[5]
-                    }));
-                }
-
-                renderDashboard();
-            } catch (err) {
-                console.error("Dashboard Load Error", err);
-            }
-        }
-
-        function renderDashboard() {
-            const container = document.getElementById('folders-container');
-            container.innerHTML = '';
-
-            // Render Folders by Question
-            allQuestions.forEach((q, idx) => {
-                // Find answers for this question
-                const qAnswers = allAnswers.filter(a => a.qId === q.id);
-                // Find how many graded
-                const gradedCount = qAnswers.filter(a => allScores.find(s => s.sid === a.sid && s.qId === a.qId)).length;
-
-                const div = document.createElement('div');
-                div.className = 'card w-64 cursor-pointer hover:bg-white/5 transition';
-                div.onclick = () => openFolder(q);
-                div.innerHTML = `
-                    <h4 class="font-bold text-lg mb-2">Q${idx + 1}. ${getQuestionTypeName(q.type)}</h4>
-                    <p class="text-sm text-gray truncate">${q.content}</p>
-                    <div class="mt-4 flex justify-between text-sm">
-                        <span>제출: ${qAnswers.length}</span>
-                        <span class="text-success">채점: ${gradedCount}</span>
-                    </div>
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        function openFolder(question) {
-            document.getElementById('folder-detail-view').classList.remove('hidden');
-            document.getElementById('folder-title').innerText = `Q. ${question.content} (${question.points}점)`;
-
-            const list = document.getElementById('folder-answers-list');
-            list.innerHTML = '';
-
-            const qAnswers = allAnswers.filter(a => a.qId === question.id);
-            if (qAnswers.length === 0) {
-                list.innerHTML = '<p>제출된 답안이 없습니다.</p>';
-                return;
-            }
-
-            qAnswers.forEach(a => {
-                const scoreData = allScores.find(s => s.sid === a.sid && s.qId === a.qId);
-                const isGraded = !!scoreData;
-                const score = isGraded ? scoreData.score : 0;
-                const feedback = isGraded ? scoreData.feedback : '';
-
-                const div = document.createElement('div');
-                div.className = 'p-4 border border-white/10 rounded bg-white/5';
-                div.innerHTML = `
-                    <div class="flex justify-between mb-2">
-                        <span class="font-bold">${a.name} (${a.sid})</span>
-                        <span class="${isGraded ? 'text-success' : 'text-gray'}">${isGraded ? score + '점' : '미채점'}</span>
-                    </div>
-                    <p class="mb-2"><strong>답안:</strong> ${a.answer}</p>
-                    
-                    <div class="mt-2">
-                        <label class="text-xs text-gray">피드백</label>
-                        <textarea id="fb_${a.sid}_${a.qId}" class="w-full text-sm p-2 rounded bg-black/20" rows="2">${feedback}</textarea>
-                    </div>
-
-                    <div class="mt-2 text-right">
-                         <button onclick="sendEmailToStudent('${a.email}', '${a.name}', '${question.content}', '${score}', document.getElementById('fb_${a.sid}_${a.qId}').value)" 
-                         class="btn btn-secondary text-sm">이메일 전송</button>
-                    </div>
-                `;
-                list.appendChild(div);
-            });
-        }
-
-        function closeFolder() {
-            document.getElementById('folder-detail-view').classList.add('hidden');
-        }
-
-        // ... grading logic ...
-        async function runAutoGrading() {
-            if (allQuestions.length === 0 || allAnswers.length === 0) {
-                alert("채점할 데이터가 부족합니다.");
-                return;
-            }
-
-            const newScores = [];
-            const timestamp = new Date().toISOString();
-
-            alert("채점을 시작합니다. 잠시만 기다려주세요...");
-
-            for (const a of allAnswers) {
-                // Check if already graded
-                if (allScores.find(s => s.sid === a.sid && s.qId === a.qId)) continue;
-
-                const q = allQuestions.find(q => q.id === a.qId);
-                if (!q) continue;
-
-                let score = 0;
-                let feedback = "";
-
-                if (q.type === 'essay') {
-                    // Call Netlify Function
-                    try {
-                        const res = await fetch('/.netlify/functions/grade', {
-                            method: 'POST',
-                            body: JSON.stringify({
-                                question: q.content,
-                                studentAnswer: a.answer,
-                                rubric: q.criteria,
-                                correctAnswer: q.answer,
-                                type: 'essay'
-                            })
-                        });
-                        const data = await res.json();
-                        score = data.score;
-                        feedback = data.feedback;
-                    } catch (e) {
-                        console.error('AI Grading Error', e);
-                        score = 0;
-                        feedback = "AI 채점 실패: " + e.message;
-                    }
                 } else {
-                    // Simple Match Logic
-                    if (a.answer.trim() === q.answer.trim()) {
-                        score = q.points;
-                        feedback = "정답입니다.";
-                    } else {
-                        score = 0;
-                        feedback = `오답입니다. (정답: ${q.answer}) ${q.explanation}`;
+                    try {
+                        await ensureSheetsExist();
+                    } catch (err) {
+                        // If 404 (Not Found), maybe ID is invalid or deleted.
+                        if (err.status === 404 || (err.result && err.result.error && err.result.error.code === 404)) {
+                            if (confirm("기존 스프레드시트를 찾을 수 없습니다. (삭제됨?). 새로 생성하시겠습니까?")) {
+                                spreadsheetId = '';
+                                localStorage.removeItem('grading_spreadsheet_id');
+                                return setupSpreadsheet(); // Retry create
+                            }
+                        } else {
+                            throw err;
+                        }
                     }
                 }
-
-                newScores.push([
-                    timestamp,
-                    a.sid,
-                    a.name,
-                    q.id,
-                    score,
-                    feedback,
-                    q.type
-                ]);
             }
 
-            if (newScores.length > 0) {
+            async function ensureSheetsExist() {
+                // Check existing sheets
                 try {
-                    await checkAndWriteHeader('SCORE', ["Timestamp", "StudentID", "Name", "Q_ID", "Score", "Feedback", "Type"]);
-
-                    await gapi.client.sheets.spreadsheets.values.append({
+                    const response = await gapi.client.sheets.spreadsheets.get({
                         spreadsheetId: spreadsheetId,
-                        range: 'SCORE!A2',
-                        valueInputOption: 'RAW',
-                        resource: {
-                            values: newScores
+                    });
+
+                    const sheets = response.result.sheets;
+                    const sheetTitles = sheets.map(s => s.properties.title);
+
+                    const requiredSheets = ['Quiz', 'answer', 'SCORE'];
+                    const requests = [];
+
+                    requiredSheets.forEach(title => {
+                        if (!sheetTitles.includes(title)) {
+                            requests.push({
+                                addSheet: {
+                                    properties: {
+                                        title: title
+                                    }
+                                }
+                            });
                         }
                     });
 
-                    alert(`${newScores.length}건의 채점이 완료되었습니다.`);
-                    await loadDashboardData(); // Reload
+                    if (requests.length > 0) {
+                        await gapi.client.sheets.spreadsheets.batchUpdate({
+                            spreadsheetId: spreadsheetId,
+                            resource: {
+                                requests: requests,
+                            },
+                        });
+                        console.log("Created missing sheets");
+                    }
+
+                    // Initialize headers if needed (simplified)
                 } catch (err) {
-                    console.error("Save Scores Error", err);
-                    alert("점수 저장 실패");
+                    console.error("Error checking sheets", err);
                 }
-            } else {
-                alert("새로 채점할 내역이 없습니다.");
-            }
-        }
-
-        async function sendEmailToStudent(email, name, question, score, feedback) {
-            if (!email) {
-                alert("학생 이메일 정보가 없습니다.");
-                return;
             }
 
-            if (!confirm(`${name} 학생에게 채점 결과를 전송하시겠습니까?`)) return;
+            // Navigation Logic
+            function showLogin() {
+                document.getElementById('login-view').classList.remove('hidden');
+                document.getElementById('student-login-view').classList.add('hidden');
+                document.getElementById('teacher-dashboard').classList.add('hidden');
+            }
 
-            const subject = `[채점 결과] ${question.substring(0, 20)}... 문항에 대한 채점 결과입니다.`;
-            const body = `
+            function showStudentLogin() {
+                document.getElementById('login-view').classList.add('hidden');
+                document.getElementById('student-login-view').classList.remove('hidden');
+            }
+
+            function logout() {
+                google.accounts.id.disableAutoSelect();
+                currentUser = null;
+                showLogin();
+            }
+
+            function showTeacherDashboard() {
+                document.getElementById('login-view').classList.add('hidden');
+                document.getElementById('teacher-dashboard').classList.remove('hidden');
+                document.getElementById('teacher-dashboard').classList.add('flex');
+                loadDashboardData();
+            }
+
+            let allAnswers = [];
+            let allScores = [];
+            let allQuestions = [];
+
+            async function loadDashboardData() {
+                try {
+                    // Load Questions
+                    const qRes = await gapi.client.sheets.spreadsheets.values.get({
+                        spreadsheetId: spreadsheetId,
+                        range: 'Quiz!A2:I' // ID, Group, Type, Points, Content, Answer, Options, Rubric, Expl
+                    });
+                    if (qRes.result.values) {
+                        allQuestions = qRes.result.values.map(r => ({
+                            id: r[0],
+                            group: r[1],
+                            type: r[2],
+                            points: r[3],
+                            content: r[4],
+                            answer: r[5],
+                            options: r[6], // JSON string
+                            criteria: r[7], // Rubric JSON
+                            explanation: r[8]
+                        }));
+                    }
+                    // Load Answers
+                    const aRes = await gapi.client.sheets.spreadsheets.values.get({
+                        spreadsheetId: spreadsheetId,
+                        range: 'answer!A2:F'
+                    });
+                    if (aRes.result.values) {
+                        // [Timestamp, StudentID, Name, Email, Q_ID, Answer]
+                        allAnswers = aRes.result.values.map(r => ({
+                            timestamp: r[0], sid: r[1], name: r[2], email: r[3], qId: r[4], answer: r[5]
+                        }));
+                    }
+
+                    // Load Scores
+                    const sRes = await gapi.client.sheets.spreadsheets.values.get({
+                        spreadsheetId: spreadsheetId,
+                        range: 'SCORE!A2:G'
+                    });
+                    if (sRes.result.values) {
+                        // [Timestamp, StudentID, Name, Q_ID, Score, Feedback, Type] assuming structure
+                        allScores = sRes.result.values.map(r => ({
+                            sid: r[1], qId: r[3], score: r[4], feedback: r[5]
+                        }));
+                    }
+
+                    renderDashboard();
+                } catch (err) {
+                    console.error("Dashboard Load Error", err);
+                }
+            }
+
+            function renderDashboard() {
+                const container = document.getElementById('folders-container');
+                container.innerHTML = '';
+
+                // Cluster by Group
+                const groups = [...new Set(allQuestions.map(q => q.group || '기본 그룹'))];
+
+                if (groups.length === 0 && allQuestions.length > 0) groups.push('Uncategorized');
+
+                groups.forEach(groupName => {
+                    // Counts
+                    const groupQs = allQuestions.filter(q => (q.group || '기본 그룹') === groupName);
+                    let totalSubmissions = 0;
+                    let totalGraded = 0;
+
+                    groupQs.forEach(q => {
+                        const qAnswers = allAnswers.filter(a => a.qId === q.id);
+                        totalSubmissions += qAnswers.length;
+                        totalGraded += qAnswers.filter(a => allScores.find(s => s.sid === a.sid && s.qId === a.qId)).length;
+                    });
+
+                    const div = document.createElement('div');
+                    div.className = 'card w-64 cursor-pointer hover:bg-white/5 transition flex flex-col justify-between';
+                    div.onclick = () => openGroupFolder(groupName);
+                    // Folder Icon SVG
+                    div.innerHTML = `
+                    <div class="flex items-center gap-2 text-accent mb-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+                        </svg>
+                        <h4 class="font-bold text-lg">${groupName}</h4>
+                    </div>
+                    <p class="text-sm text-gray">문제 수: ${groupQs.length}</p>
+                    <div class="mt-4 flex justify-between text-sm border-t border-white/10 pt-2">
+                        <span>제출: ${totalSubmissions}</span>
+                        <span>채점: ${totalGraded}</span>
+                    </div>
+                `;
+                    container.appendChild(div);
+                });
+            }
+
+            // Revised detail view (Group -> Questions)
+            function openGroupFolder(groupName) {
+                // Filter questions by group
+                const groupQs = allQuestions.filter(q => (q.group || '기본 그룹') === groupName);
+
+                // Re-use logic to show question list inside the folder view??
+                // The prompt says "Clicking the folder shows student responses FOR EACH ITEM" -> implication: show list of items, then click item to see responses.
+
+                const detailView = document.getElementById('folder-detail-view');
+                detailView.classList.remove('hidden');
+                document.getElementById('folder-title').innerText = `📂 ${groupName}`;
+
+                const list = document.getElementById('folder-answers-list');
+                list.innerHTML = '';
+
+                // Render list of questions in this group
+                groupQs.forEach(q => {
+                    const qAnswers = allAnswers.filter(a => a.qId === q.id);
+                    const gradedCount = qAnswers.filter(a => allScores.find(s => s.sid === a.sid && s.qId === a.qId)).length;
+
+                    const qDiv = document.createElement('div');
+                    qDiv.className = 'p-4 border border-white/10 rounded bg-white/5 mb-4';
+                    qDiv.innerHTML = `
+                    <div class="flex justify-between items-center cursor-pointer" onclick="toggleAnswers('${q.id}')">
+                        <div>
+                            <h5 class="font-bold text-lg">Q. ${q.content} (${q.points}점)</h5>
+                            <span class="text-xs text-gray ml-2">유형: ${q.type}</span>
+                        </div>
+                        <div class="text-sm">
+                            <span class="mr-2">응답: ${qAnswers.length}</span>
+                            <span class="text-success">완료: ${gradedCount}</span>
+                            <span class="text-xs ml-2">▼</span>
+                        </div>
+                    </div>
+                    <div id="answers-${q.id}" class="hidden mt-4 border-t border-white/10 pt-4 space-y-2">
+                        <!-- Student Answers injected here -->
+                    </div>
+                 `;
+                    list.appendChild(qDiv);
+
+                    // Pre-render answers
+                    const ansContainer = qDiv.querySelector(`#answers-${q.id}`);
+                    if (qAnswers.length === 0) {
+                        ansContainer.innerHTML = '<p class="text-sm text-gray">제출된 답안이 없습니다.</p>';
+                    } else {
+                        qAnswers.forEach(a => {
+                            const scoreData = allScores.find(s => s.sid === a.sid && s.qId === a.qId);
+                            const isGraded = !!scoreData;
+                            const score = isGraded ? scoreData.score : 0;
+                            const feedback = isGraded ? scoreData.feedback : '';
+
+                            const aDiv = document.createElement('div');
+                            aDiv.className = 'p-3 bg-black/20 rounded';
+                            aDiv.innerHTML = `
+                             <div class="flex justify-between text-sm mb-1">
+                                <span class="font-bold text-primary">${a.name} (${a.sid})</span>
+                                <span class="${isGraded ? 'text-success' : 'text-gray'}">${isGraded ? score + '점' : '미채점'}</span>
+                             </div>
+                             <p class="text-sm mb-2 text-white/90">${a.answer}</p>
+                             <div class="mt-2">
+                                <label class="text-xs text-secondary block mb-1">피드백</label>
+                                <div class="flex gap-2">
+                                    <textarea id="fb_${a.timestamp}" class="w-full text-xs p-2 rounded bg-white/5" rows="1">${feedback}</textarea>
+                                    <button onclick="sendEmailToStudent('${a.email}', '${a.name}', '${q.content}', '${score}', document.getElementById('fb_${a.timestamp}').value)" 
+                                     class="btn btn-secondary text-xs h-full whitespace-nowrap">전송</button>
+                                </div>
+                             </div>
+                        `;
+                            ansContainer.appendChild(aDiv);
+                        });
+                    }
+                });
+            }
+
+            function toggleAnswers(qId) {
+                const el = document.getElementById(`answers-${qId}`);
+                el.classList.toggle('hidden');
+            }
+
+            function closeFolder() {
+                document.getElementById('folder-detail-view').classList.add('hidden');
+            }
+
+            // ... grading logic ...
+            async function runAutoGrading() {
+                if (allQuestions.length === 0 || allAnswers.length === 0) {
+                    alert("채점할 데이터가 부족합니다.");
+                    return;
+                }
+
+                const newScores = [];
+                const timestamp = new Date().toISOString();
+
+                alert("채점을 시작합니다. 잠시만 기다려주세요...");
+
+                for (const a of allAnswers) {
+                    // Check if already graded
+                    if (allScores.find(s => s.sid === a.sid && s.qId === a.qId)) continue;
+
+                    const q = allQuestions.find(q => q.id === a.qId);
+                    if (!q) continue;
+
+                    let score = 0;
+                    let feedback = "";
+
+                    if (q.type === 'essay') {
+                        // Call Netlify Function
+                        try {
+                            const res = await fetch('/.netlify/functions/grade', {
+                                method: 'POST',
+                                body: JSON.stringify({
+                                    question: q.content,
+                                    studentAnswer: a.answer,
+                                    rubric: q.criteria,
+                                    correctAnswer: q.answer,
+                                    type: 'essay'
+                                })
+                            });
+                            const data = await res.json();
+                            score = data.score;
+                            feedback = data.feedback;
+                        } catch (e) {
+                            console.error('AI Grading Error', e);
+                            score = 0;
+                            feedback = "AI 채점 실패: " + e.message;
+                        }
+                    } else {
+                        // Simple Match Logic
+                        if (a.answer.trim() === q.answer.trim()) {
+                            score = q.points;
+                            feedback = "정답입니다.";
+                        } else {
+                            score = 0;
+                            feedback = `오답입니다. (정답: ${q.answer}) ${q.explanation}`;
+                        }
+                    }
+
+                    newScores.push([
+                        timestamp,
+                        a.sid,
+                        a.name,
+                        q.id,
+                        score,
+                        feedback,
+                        q.type
+                    ]);
+                }
+
+                if (newScores.length > 0) {
+                    try {
+                        await checkAndWriteHeader('SCORE', ["Timestamp", "StudentID", "Name", "Q_ID", "Score", "Feedback", "Type"]);
+
+                        await gapi.client.sheets.spreadsheets.values.append({
+                            spreadsheetId: spreadsheetId,
+                            range: 'SCORE!A2',
+                            valueInputOption: 'RAW',
+                            resource: {
+                                values: newScores
+                            }
+                        });
+
+                        alert(`${newScores.length}건의 채점이 완료되었습니다.`);
+                        await loadDashboardData(); // Reload
+                    } catch (err) {
+                        console.error("Save Scores Error", err);
+                        alert("점수 저장 실패");
+                    }
+                } else {
+                    alert("새로 채점할 내역이 없습니다.");
+                }
+            }
+
+            async function sendEmailToStudent(email, name, question, score, feedback) {
+                if (!email) {
+                    alert("학생 이메일 정보가 없습니다.");
+                    return;
+                }
+
+                if (!confirm(`${name} 학생에게 채점 결과를 전송하시겠습니까?`)) return;
+
+                const subject = `[채점 결과] ${question.substring(0, 20)}... 문항에 대한 채점 결과입니다.`;
+                const body = `
 안녕하세요, ${name} 학생.
 
 제출하신 문항에 대한 채점 결과입니다.
@@ -882,413 +996,486 @@ ${feedback}
 수고하셨습니다.
             `;
 
-            const utf8Subject = `=?utf-8?B?${btoa(unescape(encodeURIComponent(subject)))}?=`;
-            const messageParts = [
-                `To: ${email}`,
-                `Subject: ${utf8Subject}`,
-                "Content-Type: text/plain; charset=utf-8",
-                "MIME-Version: 1.0",
-                "",
-                body
-            ];
-            const message = messageParts.join('\n');
-            const encodedMessage = btoa(unescape(encodeURIComponent(message)))
-                .replace(/\+/g, '-')
-                .replace(/\//g, '_')
-                .replace(/=+$/, '');
+                const utf8Subject = `=?utf-8?B?${btoa(unescape(encodeURIComponent(subject)))}?=`;
+                const messageParts = [
+                    `To: ${email}`,
+                    `Subject: ${utf8Subject}`,
+                    "Content-Type: text/plain; charset=utf-8",
+                    "MIME-Version: 1.0",
+                    "",
+                    body
+                ];
+                const message = messageParts.join('\n');
+                const encodedMessage = btoa(unescape(encodeURIComponent(message)))
+                    .replace(/\+/g, '-')
+                    .replace(/\//g, '_')
+                    .replace(/=+$/, '');
 
-            try {
-                await gapi.client.gmail.users.messages.send({
-                    'userId': 'me',
-                    'resource': {
-                        'raw': encodedMessage
-                    }
-                });
-                alert("이메일이 전송되었습니다.");
-            } catch (err) {
-                console.error("Email Send Error", err);
-                alert("이메일 전송 실패: " + (err.result?.error?.message || err.message));
-            }
-        }
-
-        function switchTab(tabName) {
-            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            // Find the nav item that calls this function (simplified selection)
-            // Ideally we pass 'this' or use ID, but iterating is fine for small app
-
-            document.getElementById('tab-quiz-setup').classList.add('hidden');
-            document.getElementById('tab-results').classList.add('hidden');
-
-            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
-
-            // Highlight sidebar
-            if (tabName === 'quiz-setup') document.querySelectorAll('.nav-item')[0].classList.add('active');
-            if (tabName === 'results') document.querySelectorAll('.nav-item')[1].classList.add('active');
-        }
-
-        function openSpreadsheet() {
-            if (!spreadsheetId) {
-                alert("연동된 스프레드시트가 없습니다. 먼저 로그인을 완료해주세요.");
-                return;
-            }
-            window.open(`https://docs.google.com/spreadsheets/d/${spreadsheetId}`, '_blank');
-        }
-
-        // Quiz Setup Logic
-        document.getElementById('question-type').addEventListener('change', (e) => {
-            const type = e.target.value;
-            const criteriaSection = document.getElementById('criteria-section');
-
-            if (type === 'essay') {
-                criteriaSection.classList.remove('hidden');
-            } else {
-                criteriaSection.classList.add('hidden');
-            }
-        });
-
-        async function addQuestion() {
-            const type = document.getElementById('question-type').value;
-            const points = document.getElementById('question-points').value;
-            const content = document.getElementById('question-content').value;
-            const answer = document.getElementById('question-answer').value;
-            const criteria = document.getElementById('question-criteria').value;
-            const explanation = document.getElementById('question-explanation').value;
-
-            if (!content || !points || !answer) {
-                alert("문제 내용, 배점, 정답은 필수입니다.");
-                return;
-            }
-
-            const question = {
-                id: Date.now(),
-                type,
-                points,
-                content,
-                answer,
-                criteria: type === 'essay' ? criteria : '',
-                explanation: type !== 'essay' ? explanation : ''
-            };
-
-            questions.push(question);
-            renderQuestions();
-
-            // Clear inputs
-            document.getElementById('question-content').value = '';
-            document.getElementById('question-answer').value = '';
-            document.getElementById('question-criteria').value = '';
-            document.getElementById('question-explanation').value = '';
-        }
-
-        function renderQuestions() {
-            const list = document.getElementById('questions-list');
-            list.innerHTML = '';
-
-            if (questions.length === 0) {
-                list.innerHTML = '<div class="p-4 border border-white/10 rounded mb-2">아직 등록된 문제가 없습니다.</div>';
-                return;
-            }
-
-            questions.forEach((q, index) => {
-                const div = document.createElement('div');
-                div.className = 'p-4 border border-white/10 rounded mb-2 bg-white/5';
-                div.innerHTML = `
-                    <div class="flex justify-between">
-                        <span class="font-bold text-primary">Q${index + 1}. [${getQuestionTypeName(q.type)}] (${q.points}점)</span>
-                        <button onclick="removeQuestion(${q.id})" class="text-danger">삭제</button>
-                    </div>
-                    <p class="mt-2">${q.content}</p>
-                    <p class="text-sm text-gray mt-1">정답: ${q.answer}</p>
-                `;
-                list.appendChild(div);
-            });
-        }
-
-        function getQuestionTypeName(type) {
-            if (type === 'choice') return '선택형';
-            if (type === 'short') return '단답형';
-            if (type === 'essay') return '서논술형';
-            return type;
-        }
-
-        function removeQuestion(id) {
-            questions = questions.filter(q => q.id !== id);
-            renderQuestions();
-        }
-
-        async function saveToSheets() {
-            if (questions.length === 0) {
-                alert("저장할 문제가 없습니다.");
-                return;
-            }
-
-            // Prepare values
-            // Header: [ID, Type, Points, Question, Answer, Criteria, Explanation]
-            const values = questions.map(q => [
-                q.id,
-                q.type,
-                q.points,
-                q.content,
-                q.answer,
-                q.criteria,
-                q.explanation
-            ]);
-
-            try {
-                // Ensure headers
-                const header = ["ID", "Type", "Points", "Question", "Answer", "Criteria", "Explanation"];
-                // We'll just append. If it's a new sheet, ideally we write header first.
-                // Simple check: read A1. If empty, write header.
-
-                await checkAndWriteHeader('Quiz', header);
-
-                await gapi.client.sheets.spreadsheets.values.append({
-                    spreadsheetId: spreadsheetId,
-                    range: 'Quiz!A2',
-                    valueInputOption: 'RAW',
-                    resource: {
-                        values: values
-                    }
-                });
-
-                alert("문제가 구글 스프레드시트에 저장되었습니다!");
-
-                // Generate Student Link (Simulated)
-                const link = window.location.origin + "?quiz=" + spreadsheetId; // Simplified link logic
-
-                // In a real app we might not append to URL but use a specific ID
-                console.log("Student Link: " + link);
-
-                // We can also clear questions locally if we assume 'saved' = 'done'
-                // questions = []; renderQuestions();
-
-            } catch (err) {
-                console.error("Error saving to sheets", err);
-                alert("저장 중 오류 발생: " + err.message);
-            }
-        }
-
-        async function checkAndWriteHeader(sheetName, headerRow) {
-            try {
-                const res = await gapi.client.sheets.spreadsheets.values.get({
-                    spreadsheetId: spreadsheetId,
-                    range: `${sheetName}!A1:A1`
-                });
-
-                if (!res.result.values || res.result.values.length === 0) {
-                    await gapi.client.sheets.spreadsheets.values.update({
-                        spreadsheetId: spreadsheetId,
-                        range: `${sheetName}!A1`,
-                        valueInputOption: 'RAW',
-                        resource: {
-                            values: [headerRow]
+                try {
+                    await gapi.client.gmail.users.messages.send({
+                        'userId': 'me',
+                        'resource': {
+                            'raw': encodedMessage
                         }
                     });
+                    alert("이메일이 전송되었습니다.");
+                } catch (err) {
+                    console.error("Email Send Error", err);
+                    alert("이메일 전송 실패: " + (err.result?.error?.message || err.message));
                 }
-            } catch (err) {
-                console.error("Error checking headers", err);
-            }
-        }
-
-        // ... (Header Functions) ...
-
-        // Student Logic
-        function checkForStudentLink() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const quizId = urlParams.get('quiz');
-            if (quizId) {
-                spreadsheetId = quizId;
-                localStorage.setItem('grading_spreadsheet_id', quizId);
-                showStudentLogin();
-            }
-        }
-
-        async function startStudentQuiz() {
-            const sid = document.getElementById('student-id').value;
-            const sname = document.getElementById('student-name').value;
-
-            if (!sid || !sname) {
-                alert("학번과 이름을 입력해주세요.");
-                return;
             }
 
-            // Check auth for reading sheets?
-            // Since we are using client-side API, student ALSO needs to sign in or we need a way to read public sheet.
-            // Assumption: Teacher shares sheet as "Anyone with link can view" OR student has Google Account.
-            // The prompt says "Student ... inputs ID and Name...". It doesn't explicitly say they log in with Google.
-            // BUT to write to 'answer' sheet, they need permission.
-            // Option 1: Use Netlify Function to write to Sheet (requires Service Account).
-            // Option 2: Student logs in with Google.
-            // Given "Student Interface... Student Login (ID, Name)", it implies simple login. 
-            // However, `gapi` needs auth.
-            // I will force Google Login for students too if not signed in, OR assume the user has a Service Account backend (which involves more setup).
-            // For this "One Index HTML" constraint, simplest is asking student to Login with Google too to get access token, 
-            // OR use a proxy. 
-            // I'll add a check: If no token, prompt Google Login first, then show student ID form.
+            function switchTab(tabName) {
+                document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+                // Find the nav item that calls this function (simplified selection)
+                // Ideally we pass 'this' or use ID, but iterating is fine for small app
 
-            if (!currentUser) {
-                // If not logged in, we can't easily read/write private sheets.
-                // Trigger login flow, then callback to start quiz.
-                alert("구글 로그인이 필요합니다.");
-                // trigger login manually or guide them. 
-                // Creating a specific flow for simplicity:
-                document.getElementById('login-view').classList.remove('hidden');
-                document.getElementById('student-login-view').classList.add('hidden');
-                return;
+                document.getElementById('tab-quiz-setup').classList.add('hidden');
+                document.getElementById('tab-results').classList.add('hidden');
+
+                document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+
+                // Highlight sidebar
+                if (tabName === 'quiz-setup') document.querySelectorAll('.nav-item')[0].classList.add('active');
+                if (tabName === 'results') document.querySelectorAll('.nav-item')[1].classList.add('active');
             }
 
-            document.getElementById('student-login-view').classList.add('hidden');
-            document.getElementById('student-quiz-view').classList.remove('hidden');
+            function openSpreadsheet() {
+                if (!spreadsheetId) {
+                    alert("연동된 스프레드시트가 없습니다. 먼저 로그인을 완료해주세요.");
+                    return;
+                }
+                window.open(`https://docs.google.com/spreadsheets/d/${spreadsheetId}`, '_blank');
+            }
 
-            await loadQuizFromSheets();
-        }
 
-        async function loadQuizFromSheets() {
-            try {
-                const response = await gapi.client.sheets.spreadsheets.values.get({
-                    spreadsheetId: spreadsheetId,
-                    range: 'Quiz!A2:G', // Assuming columns A-G
-                });
+            // Theme Selector Logic
+            function setTheme(theme) {
+                document.body.setAttribute('data-theme', theme);
+                localStorage.setItem('theme', theme);
+            }
 
-                const rows = response.result.values;
-                if (!rows || rows.length === 0) {
-                    document.getElementById('student-questions-container').innerHTML = '문제 로드 실패 또는 문제가 없습니다.';
+            // Initial Theme Load
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            setTheme(savedTheme);
+
+            // UI Helpers for Quiz Setup
+            function toggleQuestionInputs() {
+                const type = document.getElementById('question-type').value;
+
+                // Toggle Options
+                if (type === 'choice') {
+                    document.getElementById('options-container').classList.remove('hidden');
+                } else {
+                    document.getElementById('options-container').classList.add('hidden');
+                }
+
+                // Toggle Rubric
+                if (type === 'essay') {
+                    document.getElementById('rubric-container').classList.remove('hidden');
+                } else {
+                    document.getElementById('rubric-container').classList.add('hidden');
+                }
+            }
+
+            let currentOptions = [];
+
+            function addOption() {
+                const list = document.getElementById('options-list');
+                const idx = list.children.length + 1;
+                const div = document.createElement('div');
+                div.className = "flex gap-2";
+                div.innerHTML = `
+                <span class="py-2 px-3 bg-white/10 rounded">${idx}</span>
+                <input type="text" class="option-input" placeholder="선택지 ${idx} 내용" oninput="updateOptionsData()">
+                <button onclick="this.parentElement.remove(); updateOptionsData();" class="text-red-400">X</button>
+            `;
+                list.appendChild(div);
+                updateOptionsData();
+            }
+
+            function updateOptionsData() {
+                // Collect option texts
+                const inputs = document.querySelectorAll('.option-input');
+                currentOptions = Array.from(inputs).map(i => i.value);
+            }
+
+            // ... existing functions ...);
+
+            async function addQuestion() {
+                const type = document.getElementById('question-type').value;
+                const points = document.getElementById('question-points').value;
+                const content = document.getElementById('question-content').value;
+                const answer = document.getElementById('question-answer').value;
+                const group = document.getElementById('question-group').value || '기본 그룹';
+                const explanation = document.getElementById('question-explanation').value;
+
+                if (!content || !points || !answer) {
+                    alert("문제 내용, 배점, 정답은 필수입니다.");
                     return;
                 }
 
-                // Parse rows: [ID, Type, Points, Question, Answer, Criteria, Explanation]
-                const loadedQuestions = rows.map(row => ({
-                    id: row[0],
-                    type: row[1],
-                    points: row[2],
-                    content: row[3],
-                    answer: row[4], // Model answer (hidden from student typically, but logic needs it for grading later)
-                    // We shouldn't render answer!
-                }));
-
-                renderStudentQuiz(loadedQuestions);
-            } catch (err) {
-                console.error("Error loading quiz", err);
-                alert("문제 로드 중 오류가 발생했습니다. 권한을 확인하세요.");
-            }
-        }
-
-        function renderStudentQuiz(qs) {
-            const container = document.getElementById('student-questions-container');
-            container.innerHTML = '';
-
-            qs.forEach((q, idx) => {
-                const div = document.createElement('div');
-                div.className = 'card';
-
-                let inputHtml = '';
-                if (q.type === 'choice') {
-                    // Assuming choice options were provided or it's a simple text match?
-                    // Prompt said "Select Choice/Short/Essay". 
-                    // Usually Choice needs options. I didn't save options in previous step.
-                    // I will render a text input for now or assume structure. 
-                    // Let's use text input for all to be safe if options missing, 
-                    // OR parse them from content if format "[Option1, Option2]"?
-                    // I'll use a simple Text Input for now to avoid breaking if options aren't there.
-                    inputHtml = `<input type="text" name="q_${q.id}" class="w-full mt-2" placeholder="정답을 입력하세요">`;
-                } else if (q.type === 'essay') {
-                    inputHtml = `<textarea name="q_${q.id}" rows="5" class="w-full mt-2" placeholder="답안을 작성하세요"></textarea>`;
-                } else {
-                    inputHtml = `<input type="text" name="q_${q.id}" class="w-full mt-2" placeholder="정답을 입력하세요">`;
+                // Collect Rubric
+                let rubric = "";
+                if (type === 'essay') {
+                    const r5 = document.getElementById('rubric-5').value;
+                    const r4 = document.getElementById('rubric-4').value;
+                    const r3 = document.getElementById('rubric-3').value;
+                    const r2 = document.getElementById('rubric-2').value;
+                    const r1 = document.getElementById('rubric-1').value;
+                    rubric = JSON.stringify({ 5: r5, 4: r4, 3: r3, 2: r2, 1: r1 });
                 }
 
-                div.innerHTML = `
-                    <h3 class="text-xl font-bold mb-2">Q${idx + 1}. (${q.points}점)</h3>
-                    <p class="mb-4 text-lg">${q.content}</p>
+                // Collect Options
+                let options = "";
+                if (type === 'choice') {
+                    options = JSON.stringify(currentOptions);
+                }
+
+                const question = {
+                    id: Date.now(),
+                    group,
+                    type,
+                    points,
+                    content,
+                    answer,
+                    options,
+                    rubric,
+                    explanation
+                };
+
+                questions.push(question);
+                renderQuestions();
+
+                // Clear inputs (Partial clear)
+                document.getElementById('question-content').value = '';
+                document.getElementById('question-answer').value = '';
+                // Don't clear group to allow continuous entry
+                if (type === 'choice') {
+                    document.getElementById('options-list').innerHTML = '';
+                    currentOptions = [];
+                }
+                if (type === 'essay') {
+                    for (let i = 1; i <= 5; i++) document.getElementById(`rubric-${i}`).value = '';
+                }
+                document.getElementById('question-explanation').value = '';
+            }
+
+            function renderQuestions() {
+                const list = document.getElementById('questions-list');
+                list.innerHTML = '';
+
+                if (questions.length === 0) {
+                    list.innerHTML = '<div class="p-4 border border-white/10 rounded mb-2">아직 등록된 문제가 없습니다.</div>';
+                    return;
+                }
+
+                questions.forEach((q, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'p-4 border border-white/10 rounded mb-2 bg-white/5';
+                    div.innerHTML = `
+                    <div class="flex justify-between">
+                        <span class="font-bold">Q${index + 1}. [${q.group}] (${q.points}점)</span>
+                        <button onclick="removeQuestion(${index})" class="text-red-400 text-sm">삭제</button>
+                    </div>
+                    <p class="text-sm mt-1">${q.content}</p>
+                    <p class="text-xs text-secondary mt-1">답: ${q.answer}</p>
+                `;
+                    list.appendChild(div);
+                });
+            }
+
+            function getQuestionTypeName(type) {
+                if (type === 'choice') return '선택형';
+                if (type === 'short') return '단답형';
+                if (type === 'essay') return '서논술형';
+                return type;
+            }
+
+            function removeQuestion(index) {
+                questions.splice(index, 1);
+                renderQuestions();
+            }
+
+            async function saveToSheets() {
+                if (questions.length === 0) {
+                    alert("저장할 문제가 없습니다.");
+                    return;
+                }
+
+                // Header: [ID, Group, Type, Points, Question, Answer, Options, Rubric, Explanation]
+                const values = questions.map(q => [
+                    q.id,
+                    q.group,
+                    q.type,
+                    q.points,
+                    q.content,
+                    q.answer,
+                    q.options,
+                    q.rubric,
+                    q.explanation
+                ]);
+
+                try {
+                    const header = ["ID", "Group", "Type", "Points", "Question", "Answer", "Options", "Rubric", "Explanation"];
+
+                    // Simple header check/write - this might duplicate if columns changed but sheet not cleared.
+                    // Assuming user starts fresh or I just append. 
+                    // Better to just append for now, user manages sheet structure.
+                    // But wait, if previous sheet has 7 columns, appending 9 will mismatch.
+                    // I will try to check first row.
+
+                    await checkAndWriteHeader('Quiz', header);
+
+                    await gapi.client.sheets.spreadsheets.values.append({
+                        spreadsheetId: spreadsheetId,
+                        range: 'Quiz!A2',
+                        valueInputOption: 'RAW',
+                        resource: {
+                            values: values
+                        }
+                    });
+
+                    alert("문제가 저장되었습니다!");
+                    const link = window.location.origin + "?quiz=" + spreadsheetId;
+                    // Copy to clipboard
+                    navigator.clipboard.writeText(link).then(() => {
+                        alert("학생용 링크가 클립보드에 복사되었습니다: " + link);
+                    });
+
+                } catch (err) {
+                    console.error("Error saving to sheets", err);
+                    alert("저장 중 오류 발생: " + err.message);
+                }
+            }
+
+            async function checkAndWriteHeader(sheetName, headerRow) {
+                try {
+                    const res = await gapi.client.sheets.spreadsheets.values.get({
+                        spreadsheetId: spreadsheetId,
+                        range: `${sheetName}!A1:A1`
+                    });
+
+                    if (!res.result.values || res.result.values.length === 0) {
+                        await gapi.client.sheets.spreadsheets.values.update({
+                            spreadsheetId: spreadsheetId,
+                            range: `${sheetName}!A1`,
+                            valueInputOption: 'RAW',
+                            resource: {
+                                values: [headerRow]
+                            }
+                        });
+                    }
+                } catch (err) {
+                    console.error("Error checking headers", err);
+                }
+            }
+
+            // ... (Header Functions) ...
+
+            // Student Logic
+            function checkForStudentLink() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const quizId = urlParams.get('quiz');
+                if (quizId) {
+                    spreadsheetId = quizId;
+                    localStorage.setItem('grading_spreadsheet_id', quizId);
+                    showStudentLogin();
+                }
+            }
+
+            async function startStudentQuiz() {
+                const sid = document.getElementById('student-id').value;
+                const sname = document.getElementById('student-name').value;
+
+                if (!sid || !sname) {
+                    alert("학번과 이름을 입력해주세요.");
+                    return;
+                }
+
+                // NOTE: Since user wants NO Google Login for students, we rely on API Key.
+                // This requires the sheet to be readable by anyone with the link (or public).
+                // Submitting answers will fail unless the sheet is writable by anyone with the link.
+
+                document.getElementById('student-login-view').classList.add('hidden');
+                document.getElementById('student-quiz-view').classList.remove('hidden');
+
+                // Try initializing client with API Key if not already
+                // If already init with ClientId (Teacher flow), it's fine.
+                // If Student flow, we might need to init gapi.client if not done.
+                if (!gapi.client.sheets) {
+                    await new Promise(resolve => gapi.load('client', resolve));
+                    await gapi.client.init({
+                        apiKey: API_KEY,
+                        discoveryDocs: [DISCOVERY_DOC],
+                    });
+                }
+
+                await loadQuizFromSheets();
+            }
+
+            async function loadQuizFromSheets() {
+                try {
+                    const response = await gapi.client.sheets.spreadsheets.values.get({
+                        spreadsheetId: spreadsheetId,
+                        range: 'Quiz!A2:I', // Extended Range for 9 columns
+                    });
+
+                    const rows = response.result.values;
+                    if (!rows || rows.length === 0) {
+                        document.getElementById('student-questions-container').innerHTML = '문제 로드 실패 또는 문제가 없습니다.';
+                        return;
+                    }
+
+                    // Parse rows: [ID, Group, Type, Points, Question, Answer, Options, Rubric, Explanation]
+                    const loadedQuestions = rows.map(row => ({
+                        id: row[0],
+                        group: row[1],
+                        type: row[2],
+                        points: row[3],
+                        content: row[4],
+                        answer: row[5],
+                        options: row[6] ? JSON.parse(row[6] || '[]') : [],
+                        // Rubric is hidden from student usually, or maybe shown?
+                    }));
+
+                    renderStudentQuiz(loadedQuestions);
+                } catch (err) {
+                    console.error("Error loading quiz", err);
+                    alert("문제 로드 실패. (스프레드시트가 '링크가 있는 모든 사용자에게 공개' 설정되어 있는지 확인해주세요.)");
+                }
+            }
+
+            function renderStudentQuiz(qs) {
+                const container = document.getElementById('student-questions-container');
+                container.innerHTML = '';
+
+                qs.forEach((q, idx) => {
+                    const div = document.createElement('div');
+                    div.className = 'card';
+
+                    let inputHtml = '';
+                    if (q.type === 'choice') {
+                        let optionsHtml = '<div class="flex flex-col gap-2 mt-2">';
+                        q.options.forEach((opt, oIdx) => {
+                            optionsHtml += `
+                            <label class="flex items-center gap-2 cursor-pointer p-2 border border-white/10 rounded hover:bg-white/5">
+                                <input type="radio" name="q_${q.id}" value="${opt}">
+                                <span>${opt}</span>
+                            </label>
+                         `;
+                        });
+                        optionsHtml += '</div>';
+                        inputHtml = optionsHtml;
+                    } else if (q.type === 'essay') {
+                        inputHtml = `<textarea name="q_${q.id}" rows="5" class="w-full mt-2" placeholder="답안을 작성하세요"></textarea>`;
+                    } else {
+                        inputHtml = `<input type="text" name="q_${q.id}" class="w-full mt-2" placeholder="정답을 입력하세요">`;
+                    }
+
+                    div.innerHTML = `
+                    <h3 class="text-xl font-bold mb-2">Q${idx + 1}. (${q.points}점) <span class="text-sm text-gray">[${q.group || ''}]</span></h3>
+                    <p class="mb-4 text-lg p-2 bg-white/5 rounded">${q.content}</p>
                     ${inputHtml}
                 `;
-                container.appendChild(div);
-            });
-        }
-
-        function toggleEmailInput() {
-            const checked = document.getElementById('request-feedback').checked;
-            if (checked) {
-                document.getElementById('email-input-section').classList.remove('hidden');
-            } else {
-                document.getElementById('email-input-section').classList.add('hidden');
-            }
-        }
-
-        async function submitQuiz() {
-            const sid = document.getElementById('student-id').value;
-            const sname = document.getElementById('student-name').value;
-            const email = document.getElementById('student-email').value || '';
-            const wantFeedback = document.getElementById('request-feedback').checked;
-
-            if (wantFeedback && !email) {
-                alert("이메일을 입력해주세요.");
-                return;
-            }
-
-            // Collect answers
-            // We need to know question IDs. 
-            // I'll re-fetch or use DOM. DOM is safer for what's rendered.
-            const inputs = document.querySelectorAll('#student-questions-container [name^="q_"]');
-            const answers = [];
-
-            inputs.forEach(input => {
-                const qId = input.name.split('_')[1];
-                answers.push({
-                    qId: qId,
-                    answer: input.value
+                    container.appendChild(div);
                 });
-            });
+            }
 
-            // Format for Sheets: One row per Student? Or One row per Answer?
-            // "Student ID, Name, Answer1, Answer2..." -> Columns dynamic?
-            // Or "Student ID, Name, Q_ID, Answer, Email" (Long format)
-            // Prompt: "students ... submit ... answers ... stored in 'answer' sheet"
-            // "Student ID, Name, Question Specific Answers..."
-            // Let's do Long Format: [Timestamp, StudentID, Name, Email, QuestionID, StudentAnswer]
-            // This is easier to aggregate for folder view.
+            function toggleEmailInput() {
+                const checked = document.getElementById('request-feedback').checked;
+                if (checked) {
+                    document.getElementById('email-input-section').classList.remove('hidden');
+                } else {
+                    document.getElementById('email-input-section').classList.add('hidden');
+                }
+            }
 
-            const timestamp = new Date().toISOString();
-            const rows = answers.map(a => [
-                timestamp,
-                sid,
-                sname,
-                email,
-                a.qId,
-                a.answer
-            ]);
+            async function submitQuiz() {
+                const sid = document.getElementById('student-id').value;
+                const sname = document.getElementById('student-name').value;
+                const email = document.getElementById('student-email').value || '';
+                const wantFeedback = document.getElementById('request-feedback').checked;
 
-            try {
-                // Submit to 'answer' sheet
-                // Header (if needed): Timestamp, StudentID, Name, Email, Q_ID, Answer
-                await checkAndWriteHeader('answer', ["Timestamp", "StudentID", "Name", "Email", "Q_ID", "Answer"]);
+                if (wantFeedback && !email) {
+                    alert("이메일을 입력해주세요.");
+                    return;
+                }
 
-                await gapi.client.sheets.spreadsheets.values.append({
-                    spreadsheetId: spreadsheetId,
-                    range: 'answer!A2',
-                    valueInputOption: 'RAW',
-                    resource: {
-                        values: rows
-                    }
+                // Collect answers
+                // We need to know question IDs. 
+                // I'll re-fetch or use DOM. DOM is safer for what's rendered.
+                const inputs = document.querySelectorAll('#student-questions-container [name^="q_"]');
+                const answers = [];
+
+                inputs.forEach(input => {
+                    const qId = input.name.split('_')[1];
+                    answers.push({
+                        qId: qId,
+                        answer: input.value
+                    });
                 });
 
-                alert("제출이 완료되었습니다! 수고하셨습니다.");
-                location.reload(); // Reset or show thank you
-            } catch (err) {
-                console.error("Submission error", err);
-                alert("제출 중 오류가 발생했습니다.");
+                // Format for Sheets: One row per Student? Or One row per Answer?
+                // "Student ID, Name, Answer1, Answer2..." -> Columns dynamic?
+                // Or "Student ID, Name, Q_ID, Answer, Email" (Long format)
+                // Prompt: "students ... submit ... answers ... stored in 'answer' sheet"
+                // "Student ID, Name, Question Specific Answers..."
+                // Let's do Long Format: [Timestamp, StudentID, Name, Email, QuestionID, StudentAnswer]
+                // This is easier to aggregate for folder view.
+
+                const timestamp = new Date().toISOString();
+                const rows = answers.map(a => [
+                    timestamp,
+                    sid,
+                    sname,
+                    email,
+                    a.qId,
+                    a.answer
+                ]);
+
+                try {
+                    // Submit to 'answer' sheet
+                    // Header (if needed): Timestamp, StudentID, Name, Email, Q_ID, Answer
+                    await checkAndWriteHeader('answer', ["Timestamp", "StudentID", "Name", "Email", "Q_ID", "Answer"]);
+
+                    await gapi.client.sheets.spreadsheets.values.append({
+                        spreadsheetId: spreadsheetId,
+                        range: 'answer!A2',
+                        valueInputOption: 'RAW',
+                        resource: {
+                            values: rows
+                        }
+                    });
+
+                    alert("제출이 완료되었습니다! 수고하셨습니다.");
+                    location.reload(); // Reset or show thank you
+                } catch (err) {
+                    console.error("Submission error", err);
+                    alert("제출 중 오류가 발생했습니다.");
+                }
             }
-        }
 
-        // Initialize
-        console.log("App Initialized");
-        gapiLoaded();
-        gisLoaded();
+            // Initialize
+            console.log("App Initialized");
+            gapiLoaded();
+            gisLoaded();
 
-        // Check link on load
-        window.onload = function () {
-            setTimeout(checkForStudentLink, 1000); // Small delay to ensure logic loaded
-        };
-    </script>
+            // Check link on load
+            window.onload = function () {
+                setTimeout(checkForStudentLink, 1000); // Small delay to ensure logic loaded
+            };
+        </script>
+        <!-- Theme Selector -->
+        <div id="theme-selector">
+            <select onchange="setTheme(this.value)" class="bg-transparent border-none outline-none text-xs p-1 m-0 mb-0"
+                style="width: auto; height: auto;">
+                <option value="dark">🌙 Dark</option>
+                <option value="light">☀️ Light</option>
+                <option value="nature">🌿 Nature</option>
+                <option value="cyberpunk">👾 Cyber</option>
+            </select>
+        </div>
 </body>
 
 </html>
