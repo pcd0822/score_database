@@ -1420,39 +1420,60 @@ ${feedback}
                 // "Student ID, Name, Answer1, Answer2..." -> Columns dynamic?
                 // Or "Student ID, Name, Q_ID, Answer, Email" (Long format)
                 // Prompt: "students ... submit ... answers ... stored in 'answer' sheet"
-                // "Student ID, Name, Question Specific Answers..."
-                // Let's do Long Format: [Timestamp, StudentID, Name, Email, QuestionID, StudentAnswer]
-                // This is easier to aggregate for folder view.
-
                 const timestamp = new Date().toISOString();
-                const rows = answers.map(a => [
-                    timestamp,
-                    sid,
-                    sname,
-                    email,
-                    a.qId,
-                    a.answer
-                ]);
+
+                // Apps Script Web App URL
+                const APPS_CRIPT_URL = "https://script.google.com/macros/s/AKfycbxHifM9wTye_zcKxq2phZDRGlEQmFGPEaECYET0PvsiD0wBsnU4JdwY6VcgwrMsdMewIw/exec";
 
                 try {
-                    // Submit to 'answer' sheet
-                    // Header (if needed): Timestamp, StudentID, Name, Email, Q_ID, Answer
-                    await checkAndWriteHeader('answer', ["Timestamp", "StudentID", "Name", "Email", "Q_ID", "Answer"]);
+                    // Send one request per answer (or modify Apps Script to accept array - current script handles ONE row per request implies simple logic. 
+                    // Wait, script `data` is object. `sheet.appendRow`.
+                    // To be safe and efficient, we should loop on client side OR update script to handle array.
+                    // Provided script handles SINGLE object: {timestamp, ..., qId, answer}.
+                    // So we loop requests.
 
-                    await gapi.client.sheets.spreadsheets.values.append({
-                        spreadsheetId: spreadsheetId,
-                        range: 'answer!A2',
-                        valueInputOption: 'RAW',
-                        resource: {
-                            values: rows
-                        }
-                    });
+                    let successCount = 0;
+
+                    // Show loading state
+                    const btn = document.querySelector('button[onclick="submitQuiz()"]');
+                    const originalText = btn.innerText;
+                    btn.innerText = "제출 중...";
+                    btn.disabled = true;
+
+                    for (const a of answers) {
+                        const payload = {
+                            timestamp,
+                            sid,
+                            sname,
+                            email,
+                            qId: a.qId,
+                            answer: a.answer
+                        };
+
+                        // Use fetch with no-cors or standard text/plain to avoid preflight issues if simple
+                        // Google Apps Script usually needs 'Content-Type': 'text/plain;charset=utf-8' for POST to work easily without CORS options request failure if not handled well.
+                        // But we used 'no-cors' trick usually or just standard fetch.
+                        // Let's try standard fetch.
+
+                        await fetch(APPS_CRIPT_URL, {
+                            method: 'POST',
+                            mode: 'no-cors', // Important for opaque response from Google Script
+                            headers: {
+                                'Content-Type': 'text/plain'
+                            },
+                            body: JSON.stringify(payload)
+                        });
+                        successCount++;
+                    }
 
                     alert("제출이 완료되었습니다! 수고하셨습니다.");
-                    location.reload(); // Reset or show thank you
+                    location.reload();
+
                 } catch (err) {
                     console.error("Submission error", err);
-                    alert("제출 중 오류가 발생했습니다.");
+                    alert("제출 중 오류가 발생했습니다. 다시 시도해주세요.");
+                    btn.innerText = originalText;
+                    btn.disabled = false;
                 }
             }
 
