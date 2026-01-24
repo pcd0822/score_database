@@ -18,14 +18,17 @@ exports.handler = async (event, context) => {
     });
 
     let prompt = "";
-    
+
     if (type === 'essay') {
       prompt = `
         You are a strict but fair teacher grading a student's answer.
         
         Question: ${question}
         Correct Answer (Model Answer): ${correctAnswer}
-        Rubric (Scoring Criteria): ${rubric}
+        Rubric (Scoring Criteria): 
+        ${typeof rubric === 'string' && rubric.startsWith('{') ?
+          Object.entries(JSON.parse(rubric)).map(([k, v]) => `- ${k} Points: ${v}`).join('\n') :
+          rubric}
         
         Student Answer: "${studentAnswer}"
         
