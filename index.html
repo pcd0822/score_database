@@ -1460,9 +1460,9 @@
                               <div class="mt-4 pt-4">
                                   <label class="text-xs text-secondary block mb-2">교사 피드백 작성</label>
                                   <div class="flex gap-3">
-                                      <textarea id="fb_${a.sid}_${a.qId}" class="flex-1 text-xs p-2 rounded bg-white/5 mr-2" rows="3" placeholder="피드백을 입력하세요" style="border: none !important;">${feedback}</textarea>
+                                      <textarea id="fb_${a.sid}_${a.qId}" class="text-xs p-2 rounded bg-white/5 mr-2" rows="3" placeholder="피드백을 입력하세요" style="border: none !important; flex: 4.5 1 0%;">${feedback}</textarea>
                                       <button onclick="saveFeedbackAndSend('${a.sid}', '${a.qId}', '${a.email}', '${a.name}', '${q.content}', ${score}, '${a.timestamp}')" 
-                                       class="btn btn-primary text-xs h-auto whitespace-nowrap px-3 py-2" style="border: none;">저장 및 전송</button>
+                                       class="btn btn-primary text-xs h-auto whitespace-nowrap px-3 py-2" style="border: none; flex: 1 1 0%;">저장 및 전송</button>
                                   </div>
                               </div>
                         `;
