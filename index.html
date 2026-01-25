@@ -121,18 +121,23 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
-        :root {
-            --primary: #6366f1;
-            --primary-dark: #4f46e5;
-            --secondary: #ec4899;
-            --bg-dark: #0f172a;
-            --bg-card: #1e293b;
-            --text-light: #f8fafc;
-            --text-gray: #94a3b8;
-            --success: #22c55e;
-            --danger: #ef4444;
-            --glass: rgba(30, 41, 59, 0.7);
-        }
+        --primary: #6366f1;
+        --primary-dark: #4f46e5;
+        --secondary: #ec4899;
+        --bg-dark: #0f172a;
+        --bg-card: #1e293b;
+        --text-light: #f8fafc;
+        --text-gray: #94a3b8;
+        --success: #22c55e;
+        --danger: #ef4444;
+        --glass: rgba(30, 41, 59, 0.7);
+
+        /* Alias for consistency */
+        --card-bg: var(--bg-card);
+        --bg-color: var(--bg-dark);
+        --text-color: var(--text-light);
+        --secondary-color: var(--text-gray);
+        --primary-color: var(--primary);
 
         * {
             box-sizing: border-box;
@@ -793,7 +798,12 @@
             }
 
             function renderDashboard() {
+                console.log("Rendering Dashboard...");
                 const container = document.getElementById('folders-container');
+                if (!container) {
+                    console.error("Folders container not found!");
+                    return;
+                }
                 container.innerHTML = '';
 
                 if (allQuestions.length === 0) {
@@ -805,6 +815,8 @@
                 const groups = [...new Set(allQuestions.map(q => q.group || '기본 그룹'))];
 
                 if (groups.length === 0 && allQuestions.length > 0) groups.push('기본 그룹');
+
+                console.log("Groups to render:", groups);
 
                 groups.forEach(groupName => {
                     // Counts
@@ -818,21 +830,23 @@
                         totalGraded += qAnswers.filter(a => allScores.find(s => s.sid === a.sid && s.qId === a.qId)).length;
                     });
 
+                    console.log(`Rendering Group: ${groupName}, Qs: ${groupQs.length}, Subs: ${totalSubmissions}`);
+
                     const div = document.createElement('div');
                     div.className = 'card w-64 cursor-pointer hover:bg-white/5 transition flex flex-col justify-between';
                     div.onclick = () => openGroupFolder(groupName);
                     // Folder Icon SVG
                     div.innerHTML = `
                     <div class="flex items-center gap-2 text-accent mb-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-primary">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
                         </svg>
-                        <h4 class="font-bold text-lg">${groupName}</h4>
+                        <h4 class="font-bold text-lg text-white">${groupName}</h4>
                     </div>
                     <p class="text-sm text-gray">문제 수: ${groupQs.length}</p>
                     <div class="mt-4 flex justify-between text-sm border-t border-white/10 pt-2">
-                        <span>제출: ${totalSubmissions}</span>
-                        <span>채점: ${totalGraded}</span>
+                        <span class="text-white">제출: ${totalSubmissions}</span>
+                        <span class="text-white">채점: ${totalGraded}</span>
                     </div>
                 `;
                     container.appendChild(div);
