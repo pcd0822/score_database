@@ -359,6 +359,18 @@
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
         }
 
+        /* 폴더 링크 복사 버튼 테두리 제거 */
+        button[onclick*="copyFolderLink"] {
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        button[onclick*="copyFolderLink"]:hover {
+            border: none !important;
+            outline: none !important;
+        }
+
         .card {
             background-color: var(--card-bg);
             border-radius: 1rem;
@@ -787,8 +799,8 @@
 
             <!-- Results Tab -->
             <div id="tab-results" class="hidden fade-in">
-                <h2 class="text-2xl font-bold mb-10">채점 및 결과</h2>
-                <div class="flex gap-6 mb-12">
+                <h2 class="text-2xl font-bold mb-12">채점 및 결과</h2>
+                <div class="flex gap-6 mb-16">
                     <div class="card flex-1">
                         <h3 class="text-gray mb-2">제출된 답안</h3>
                         <p id="total-submissions" class="text-3xl font-bold" style="border: none;">0</p>
@@ -799,7 +811,7 @@
                     </div>
                 </div>
 
-                <div class="card mb-12">
+                <div class="card mb-16">
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-xl">문항별 폴더</h3>
                         <div class="flex gap-2">
@@ -812,7 +824,7 @@
                 </div>
 
                 <!-- Expanded Folder View (Hidden by default) -->
-                <div id="folder-detail-view" class="hidden card mt-12">
+                <div id="folder-detail-view" class="hidden card mt-16">
                     <div class="flex justify-between mb-6">
                         <h3 id="folder-title" class="text-xl font-bold">Q_ID Detail</h3>
                         <button onclick="closeFolder()" class="btn btn-secondary text-sm">닫기</button>
@@ -1225,7 +1237,7 @@
                     </div>
                     <div class="mt-4 pt-2 border-t border-white-10">
                         <button onclick="event.stopPropagation(); copyFolderLink('${folderLink}', '${groupName}')" 
-                                class="btn btn-secondary text-xs w-full" style="border: none;">
+                                class="btn btn-secondary text-xs w-full" style="border: none !important; outline: none !important; box-shadow: none !important;">
                             📋 폴더 링크 복사
                         </button>
                     </div>
