@@ -719,11 +719,13 @@
 
             async function loadDashboardData() {
                 try {
+                    console.log("Loading Dashboard Data...");
                     // Load Questions
                     const qRes = await gapi.client.sheets.spreadsheets.values.get({
                         spreadsheetId: spreadsheetId,
-                        range: 'Quiz!A2:I' // ID, Group, Type, Points, Content, Answer, Options, Rubric, Expl
+                        range: 'Quiz!A2:I'
                     });
+
                     if (qRes.result.values) {
                         allQuestions = qRes.result.values.map(r => ({
                             id: r[0],
@@ -732,23 +734,25 @@
                             points: r[3],
                             content: r[4],
                             answer: r[5],
-                            options: r[6], // JSON string
-                            criteria: r[7], // Rubric JSON
+                            options: r[6],
+                            criteria: r[7],
                             explanation: r[8]
                         }));
+                    } else {
+                        allQuestions = [];
                     }
+
                     // Load Answers
                     const aRes = await gapi.client.sheets.spreadsheets.values.get({
                         spreadsheetId: spreadsheetId,
                         range: 'answer!A2:F'
                     });
+
                     if (aRes.result.values) {
-                        // [Timestamp, StudentID, Name, Email, Q_ID, Answer]
                         allAnswers = aRes.result.values.map(r => ({
                             timestamp: r[0], sid: r[1], name: r[2], email: r[3], qId: r[4], answer: r[5]
                         }));
                     } else {
-                        console.log("No answers found.");
                         allAnswers = [];
                     }
 
@@ -757,8 +761,8 @@
                         spreadsheetId: spreadsheetId,
                         range: 'SCORE!A2:G'
                     });
+
                     if (sRes.result.values) {
-                        // [Timestamp, StudentID, Name, Q_ID, Score, Feedback, Type] assuming structure
                         allScores = sRes.result.values.map(r => ({
                             sid: r[1], qId: r[3], score: r[4], feedback: r[5]
                         }));
@@ -766,16 +770,25 @@
                         allScores = [];
                     }
 
-                    console.log("Dashboard Data Loaded:", {
+                    console.log("Data Loaded:", {
                         questions: allQuestions.length,
                         answers: allAnswers.length,
                         scores: allScores.length
                     });
 
+                    // DEBUG: Show user what happened
+                    if (allQuestions.length === 0) {
+                        alert("로드된 문제가 없습니다 'Quiz' 시트를 확인해주세요.");
+                    } else if (allAnswers.length === 0) {
+                        // This is expected if nobody submitted yet, but user said "answers are entering DB"
+                        // So if this is 0, it means frontend is looking at WRONG sheet or WRONG range.
+                        console.warn("No answers loaded.");
+                    }
+
                     renderDashboard();
                 } catch (err) {
                     console.error("Dashboard Load Error", err);
-                    // If 403, might need re-auth, but usually token is there.
+                    alert("대시보드 데이터를 불러오는 중 오류가 발생했습니다: " + err.message);
                 }
             }
 
