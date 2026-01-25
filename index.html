@@ -806,6 +806,19 @@
                     console.error("Folders container not found!");
                     return;
                 }
+                // DEBUG VISUALIZATION
+                container.style.border = "2px dashed cyan";
+                container.style.minHeight = "50px";
+                container.style.padding = "10px";
+
+                container.innerHTML = '<p style="color: cyan;">[DEBUG] 렌더링 컨테이너 준비됨...</p>';
+
+                if (allQuestions.length === 0) {
+                    container.innerHTML = '<p class="text-gray col-span-3 text-center">등록된 문제가 없습니다. 문제를 먼저 출제해주세요.</p>';
+                    return;
+                }
+
+                // Clear debug text before rendering real content if we have questions
                 container.innerHTML = '';
 
                 if (allQuestions.length === 0) {
