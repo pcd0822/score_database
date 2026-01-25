@@ -652,42 +652,42 @@
                             내보내기</button>
                     </div>
                 </div>
+            </div>
 
-                <!-- Results Tab -->
-                <div id="tab-results" class="hidden fade-in">
-                    <h2 class="text-2xl font-bold mb-6">채점 및 결과</h2>
-                    <div class="flex gap-4 mb-6">
-                        <div class="card flex-1">
-                            <h3 class="text-gray mb-2">제출된 답안</h3>
-                            <p class="text-3xl font-bold">0</p>
-                        </div>
-                        <div class="card flex-1">
-                            <h3 class="text-gray mb-2">채점 완료</h3>
-                            <p class="text-3xl font-bold">0</p>
+            <!-- Results Tab -->
+            <div id="tab-results" class="hidden fade-in">
+                <h2 class="text-2xl font-bold mb-6">채점 및 결과</h2>
+                <div class="flex gap-4 mb-6">
+                    <div class="card flex-1">
+                        <h3 class="text-gray mb-2">제출된 답안</h3>
+                        <p id="total-submissions" class="text-3xl font-bold">0</p>
+                    </div>
+                    <div class="card flex-1">
+                        <h3 class="text-gray mb-2">채점 완료</h3>
+                        <p id="total-graded" class="text-3xl font-bold">0</p>
+                    </div>
+                </div>
+
+                <div class="card mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl">문항별 폴더</h3>
+                        <div class="flex gap-2">
+                            <button onclick="loadDashboardData()" class="btn btn-secondary">새로고침</button>
+                            <button onclick="runAutoGrading()" class="btn btn-primary">AI 채점 시작</button>
                         </div>
                     </div>
-
-                    <div class="card mb-6">
-                        <div class="flex justify-between items-center mb-4">
-                            <h3 class="text-xl">문항별 폴더</h3>
-                            <div class="flex gap-2">
-                                <button onclick="loadDashboardData()" class="btn btn-secondary">새로고침</button>
-                                <button onclick="runAutoGrading()" class="btn btn-primary">AI 채점 시작</button>
-                            </div>
-                        </div>
-                        <div id="folders-container" class="flex flex-wrap gap-4">
-                            <!-- Question Folders -->
-                        </div>
+                    <div id="folders-container" class="flex flex-wrap gap-4">
+                        <!-- Question Folders -->
                     </div>
+                </div>
 
-                    <!-- Expanded Folder View (Hidden by default) -->
-                    <div id="folder-detail-view" class="hidden card mt-4">
-                        <div class="flex justify-between mb-4">
-                            <h3 id="folder-title" class="text-xl font-bold">Q_ID Detail</h3>
-                            <button onclick="closeFolder()" class="btn btn-secondary text-sm">닫기</button>
-                        </div>
-                        <div id="folder-answers-list" class="space-y-4"></div>
+                <!-- Expanded Folder View (Hidden by default) -->
+                <div id="folder-detail-view" class="hidden card mt-4">
+                    <div class="flex justify-between mb-4">
+                        <h3 id="folder-title" class="text-xl font-bold">Q_ID Detail</h3>
+                        <button onclick="closeFolder()" class="btn btn-secondary text-sm">닫기</button>
                     </div>
+                    <div id="folder-answers-list" class="space-y-4"></div>
                 </div>
             </div>
         </div>
@@ -802,6 +802,12 @@
                 document.getElementById('login-view').classList.add('hidden');
                 document.getElementById('teacher-dashboard').classList.remove('hidden');
                 document.getElementById('teacher-dashboard').classList.add('flex');
+                
+                // Show quiz-setup tab by default
+                document.getElementById('tab-quiz-setup').classList.remove('hidden');
+                document.getElementById('tab-results').classList.add('hidden');
+                
+                // Load dashboard data for results tab (will be shown when user switches)
                 loadDashboardData();
             }
 
@@ -886,30 +892,33 @@
 
             function renderDashboard() {
                 console.log("Rendering Dashboard...");
+                
+                // Update statistics
+                const totalSubmissionsEl = document.getElementById('total-submissions');
+                const totalGradedEl = document.getElementById('total-graded');
+                if (totalSubmissionsEl) {
+                    totalSubmissionsEl.textContent = allAnswers.length;
+                }
+                if (totalGradedEl) {
+                    const gradedCount = allAnswers.filter(a => 
+                        allScores.find(s => s.sid === a.sid && s.qId === a.qId)
+                    ).length;
+                    totalGradedEl.textContent = gradedCount;
+                }
+                
                 const container = document.getElementById('folders-container');
                 if (!container) {
                     console.error("Folders container not found!");
                     return;
                 }
-                // DEBUG VISUALIZATION
-                container.style.border = "2px dashed cyan";
-                container.style.minHeight = "50px";
-                container.style.padding = "10px";
-
-                container.innerHTML = '<p style="color: cyan;">[DEBUG] 렌더링 컨테이너 준비됨...</p>';
 
                 if (allQuestions.length === 0) {
                     container.innerHTML = '<p class="text-gray col-span-3 text-center">등록된 문제가 없습니다. 문제를 먼저 출제해주세요.</p>';
                     return;
                 }
 
-                // Clear debug text before rendering real content if we have questions
+                // Clear container before rendering
                 container.innerHTML = '';
-
-                if (allQuestions.length === 0) {
-                    container.innerHTML = '<p class="text-gray col-span-3 text-center">등록된 문제가 없습니다. 문제를 먼저 출제해주세요.</p>';
-                    return;
-                }
 
                 // Cluster by Group
                 const groups = [...new Set(allQuestions.map(q => q.group || '기본 그룹'))];
