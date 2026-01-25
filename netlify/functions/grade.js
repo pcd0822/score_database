@@ -20,27 +20,53 @@ exports.handler = async (event, context) => {
     let prompt = "";
 
     if (type === 'essay') {
+      // Parse rubric with points
+      let rubricText = '';
+      if (typeof rubric === 'string' && rubric.startsWith('{')) {
+        try {
+          const rubricObj = JSON.parse(rubric);
+          rubricText = Object.entries(rubricObj).map(([k, v]) => {
+            if (typeof v === 'object' && v.points && v.criteria) {
+              return `- ${k}점 (배점: ${v.points}점): ${v.criteria}`;
+            } else {
+              return `- ${k}점: ${v}`;
+            }
+          }).join('\n');
+        } catch (e) {
+          rubricText = rubric;
+        }
+      } else {
+        rubricText = rubric;
+      }
+
       prompt = `
-        You are a strict but fair teacher grading a student's answer.
+        You are a strict but fair teacher grading a student's answer. You must carefully analyze the student's actual response and compare it against the rubric criteria.
         
         Question: ${question}
-        Correct Answer (Model Answer): ${correctAnswer}
-        Rubric (Scoring Criteria): 
-        ${typeof rubric === 'string' && rubric.startsWith('{') ?
-          Object.entries(JSON.parse(rubric)).map(([k, v]) => `- ${k} Points: ${v}`).join('\n') :
-          rubric}
+        Model Answer (Reference): ${correctAnswer}
         
-        Student Answer: "${studentAnswer}"
+        Rubric (Scoring Criteria with Points): 
+        ${rubricText}
         
-        Task:
-        1. Evaluate the student's answer based on the rubric and model answer.
-        2. Assign a score based on the 5-point scale defined in the rubric.
-        3. Provide constructive feedback explaining the score and how to improve.
+        Student's Actual Answer: "${studentAnswer}"
+        
+        IMPORTANT INSTRUCTIONS:
+        1. You MUST carefully read and analyze the student's actual answer content first.
+        2. Compare the student's answer against EACH rubric criterion, checking what the student actually wrote.
+        3. Evaluate how well the student's answer addresses the question and meets the rubric criteria.
+        4. Assign a score based on how well the student's answer matches the rubric criteria (not just the model answer).
+        5. Provide specific feedback that:
+           - References specific parts of the student's answer
+           - Explains which rubric criteria were met or not met
+           - Suggests concrete improvements based on what the student actually wrote
+           - Points out strengths in the student's answer if any
+        
+        Your evaluation must be based on the STUDENT'S ACTUAL ANSWER CONTENT, not just comparing to the model answer.
         
         Output JSON format:
         {
-          "score": number,
-          "feedback": "string"
+          "score": number (must match one of the rubric point levels),
+          "feedback": "string (detailed feedback referencing the student's answer)"
         }
       `;
     } else {
