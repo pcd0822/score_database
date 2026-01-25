@@ -346,19 +346,21 @@
             background: rgba(255, 255, 255, 0.1);
             color: var(--text-color);
             border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
         }
 
         .btn-secondary:hover {
             background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
         }
 
         .card {
             background-color: var(--card-bg);
             border-radius: 1rem;
             padding: 2rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            transition: background-color 0.3s;
+            transition: all 0.3s;
             backdrop-filter: blur(10px);
         }
 
@@ -392,6 +394,54 @@
         [data-theme="light"] select,
         [data-theme="light"] textarea {
             background-color: #f9fafb;
+        }
+
+        /* Theme-specific styles */
+        [data-theme="light"] {
+            --bg-dark: #f8fafc;
+            --bg-card: #ffffff;
+            --text-light: #1e293b;
+            --text-gray: #64748b;
+            --primary: #4f46e5;
+            --primary-dark: #4338ca;
+            --secondary: #ec4899;
+        }
+
+        [data-theme="nature"] {
+            --bg-dark: #0a2810;
+            --bg-card: #1a3d26;
+            --text-light: #d4f4dd;
+            --text-gray: #7fb893;
+            --primary: #22c55e;
+            --primary-dark: #16a34a;
+            --secondary: #84cc16;
+        }
+
+        [data-theme="cyber"] {
+            --bg-dark: #0a0e27;
+            --bg-card: #1a1f3d;
+            --text-light: #00f5ff;
+            --text-gray: #7c8db5;
+            --primary: #00f5ff;
+            --primary-dark: #00d4e6;
+            --secondary: #ff00ff;
+        }
+
+        /* Enhanced shadows for depth */
+        .card {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+        }
+
+        [data-theme="light"] .card {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+        }
+
+        [data-theme="nature"] .card {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(34, 197, 94, 0.1);
+        }
+
+        [data-theme="cyber"] .card {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 245, 255, 0.2), 0 0 20px rgba(0, 245, 255, 0.1);
         }
 
         input:focus,
@@ -487,6 +537,77 @@
             z-index: 1000;
             backdrop-filter: blur(5px);
         }
+
+        /* Loading Animation */
+        @keyframes spin3d {
+            0% { transform: rotateY(0deg) rotateX(0deg); }
+            100% { transform: rotateY(360deg) rotateX(360deg); }
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { 
+                box-shadow: 0 0 20px var(--primary), 0 0 40px var(--primary), 0 0 60px var(--primary);
+                transform: scale(1);
+            }
+            50% { 
+                box-shadow: 0 0 30px var(--primary), 0 0 60px var(--primary), 0 0 90px var(--primary);
+                transform: scale(1.1);
+            }
+        }
+
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .loading-cube {
+            width: 80px;
+            height: 80px;
+            position: relative;
+            transform-style: preserve-3d;
+            animation: spin3d 2s linear infinite;
+        }
+
+        .loading-cube-face {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            border: 2px solid var(--text-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: var(--text-light);
+            animation: pulse-glow 1.5s ease-in-out infinite;
+        }
+
+        .loading-cube-face:nth-child(1) { transform: rotateY(0deg) translateZ(40px); }
+        .loading-cube-face:nth-child(2) { transform: rotateY(90deg) translateZ(40px); }
+        .loading-cube-face:nth-child(3) { transform: rotateY(180deg) translateZ(40px); }
+        .loading-cube-face:nth-child(4) { transform: rotateY(-90deg) translateZ(40px); }
+        .loading-cube-face:nth-child(5) { transform: rotateX(90deg) translateZ(40px); }
+        .loading-cube-face:nth-child(6) { transform: rotateX(-90deg) translateZ(40px); }
+
+        .result-card {
+            margin-top: 1rem;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            background: var(--card-bg);
+            border: 2px solid var(--primary);
+        }
+
+        .result-correct {
+            border-color: var(--success);
+            background: rgba(34, 197, 94, 0.1);
+        }
+
+        .result-incorrect {
+            border-color: var(--danger);
+            background: rgba(239, 68, 68, 0.1);
+        }
     </style>
 </head>
 
@@ -501,7 +622,7 @@
             </h1>
             <p class="text-gray mb-8">구글 계정으로 로그인하여 시작하세요.</p>
 
-            <div class="flex justify-center">
+            <div class="flex flex-col gap-4 items-center">
                 <div id="g_id_onload"
                     data-client_id="837113843065-r43b5g2f283ma3393nke4fcf25v0afi8.apps.googleusercontent.com"
                     data-callback="handleCredentialResponse" data-auto_select="false">
@@ -509,12 +630,11 @@
                 <div class="g_id_signin" data-type="standard" data-size="large" data-theme="filled_blue"
                     data-text="sign_in_with" data-shape="rectangular" data-logo_alignment="left">
                 </div>
+                
+                <button onclick="showStudentLogin()" class="btn btn-secondary w-full mt-4">
+                    학생으로 시작하기
+                </button>
             </div>
-
-            <button onclick="showStudentLogin()"
-                class="mt-8 text-sm text-gray hover:text-white underline block mx-auto">
-                학생으로 시작하기
-            </button>
         </div>
     </div>
 
@@ -657,14 +777,14 @@
             <!-- Results Tab -->
             <div id="tab-results" class="hidden fade-in">
                 <h2 class="text-2xl font-bold mb-6">채점 및 결과</h2>
-                <div class="flex gap-4 mb-6">
+                <div class="flex gap-6 mb-8">
                     <div class="card flex-1">
                         <h3 class="text-gray mb-2">제출된 답안</h3>
-                        <p id="total-submissions" class="text-3xl font-bold">0</p>
+                        <p id="total-submissions" class="text-3xl font-bold" style="border: none;">0</p>
                     </div>
                     <div class="card flex-1">
                         <h3 class="text-gray mb-2">채점 완료</h3>
-                        <p id="total-graded" class="text-3xl font-bold">0</p>
+                        <p id="total-graded" class="text-3xl font-bold" style="border: none;">0</p>
                     </div>
                 </div>
 
@@ -673,10 +793,9 @@
                         <h3 class="text-xl">문항별 폴더</h3>
                         <div class="flex gap-2">
                             <button onclick="loadDashboardData()" class="btn btn-secondary">새로고침</button>
-                            <button onclick="runAutoGrading()" class="btn btn-primary">AI 채점 시작</button>
                         </div>
                     </div>
-                    <div id="folders-container" class="flex flex-wrap gap-4">
+                    <div id="folders-container" class="flex flex-wrap gap-6">
                         <!-- Question Folders -->
                     </div>
                 </div>
@@ -809,6 +928,137 @@
                 
                 // Load dashboard data for results tab (will be shown when user switches)
                 loadDashboardData();
+                
+                // Auto-grade new submissions periodically
+                setInterval(autoGradeNewSubmissions, 30000); // Check every 30 seconds
+            }
+
+            async function autoGradeNewSubmissions() {
+                try {
+                    // Reload answers to check for new submissions
+                    const aRes = await gapi.client.sheets.spreadsheets.values.get({
+                        spreadsheetId: spreadsheetId,
+                        range: 'answer!A2:G'
+                    });
+
+                    if (!aRes.result.values) return;
+
+                    const newAnswers = aRes.result.values.map(r => ({
+                        timestamp: r[0], sid: r[1], name: r[2], email: r[3], qId: r[4], answer: r[5], group: r[6] || ''
+                    }));
+
+                    // Reload scores
+                    const sRes = await gapi.client.sheets.spreadsheets.values.get({
+                        spreadsheetId: spreadsheetId,
+                        range: 'SCORE!A2:G'
+                    });
+
+                    const existingScores = sRes.result.values ? sRes.result.values.map(r => ({
+                        sid: r[1], qId: r[3]
+                    })) : [];
+
+                    // Find ungraded answers
+                    const ungradedAnswers = newAnswers.filter(a => 
+                        !existingScores.find(s => s.sid === a.sid && s.qId === a.qId)
+                    );
+
+                    if (ungradedAnswers.length === 0) return;
+
+                    // Reload questions
+                    const qRes = await gapi.client.sheets.spreadsheets.values.get({
+                        spreadsheetId: spreadsheetId,
+                        range: 'Quiz!A2:I'
+                    });
+
+                    if (!qRes.result.values) return;
+
+                    const questions = qRes.result.values.map(r => ({
+                        id: r[0],
+                        group: r[1],
+                        type: r[2],
+                        points: r[3],
+                        content: r[4],
+                        answer: r[5],
+                        options: r[6],
+                        rubric: r[7] || '',
+                        explanation: r[8] || ''
+                    }));
+
+                    // Grade ungraded answers
+                    const newScores = [];
+                    const timestamp = new Date().toISOString();
+
+                    for (const a of ungradedAnswers) {
+                        const q = questions.find(q => q.id == a.qId);
+                        if (!q) continue;
+
+                        let score = 0;
+                        let feedback = "";
+
+                        if (q.type === 'essay') {
+                            try {
+                                const res = await fetch('/.netlify/functions/grade', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify({
+                                        question: q.content,
+                                        studentAnswer: a.answer,
+                                        rubric: q.rubric,
+                                        correctAnswer: q.answer,
+                                        type: 'essay'
+                                    })
+                                });
+                                const data = await res.json();
+                                score = data.score || 0;
+                                feedback = data.feedback || '';
+                            } catch (e) {
+                                console.error('AI Grading Error', e);
+                                score = 0;
+                                feedback = "AI 채점 실패: " + e.message;
+                            }
+                        } else {
+                            if (a.answer.trim() === q.answer.trim()) {
+                                score = q.points;
+                                feedback = "정답입니다.";
+                            } else {
+                                score = 0;
+                                feedback = `오답입니다. (정답: ${q.answer}) ${q.explanation || ''}`;
+                            }
+                        }
+
+                        newScores.push([
+                            timestamp,
+                            a.sid,
+                            a.name,
+                            q.id,
+                            score,
+                            feedback,
+                            q.type
+                        ]);
+                    }
+
+                    if (newScores.length > 0) {
+                        await checkAndWriteHeader('SCORE', ["Timestamp", "StudentID", "Name", "Q_ID", "Score", "Feedback", "Type"]);
+
+                        await gapi.client.sheets.spreadsheets.values.append({
+                            spreadsheetId: spreadsheetId,
+                            range: 'SCORE!A2',
+                            valueInputOption: 'RAW',
+                            resource: {
+                                values: newScores
+                            }
+                        });
+
+                        // Refresh dashboard if results tab is visible
+                        if (!document.getElementById('tab-results').classList.contains('hidden')) {
+                            loadDashboardData();
+                        }
+                    }
+                } catch (err) {
+                    console.error("Auto-grade error", err);
+                }
             }
 
             let allAnswers = [];
@@ -840,15 +1090,15 @@
                         allQuestions = [];
                     }
 
-                    // Load Answers
+                    // Load Answers (including Group column)
                     const aRes = await gapi.client.sheets.spreadsheets.values.get({
                         spreadsheetId: spreadsheetId,
-                        range: 'answer!A2:F'
+                        range: 'answer!A2:G'
                     });
 
                     if (aRes.result.values) {
                         allAnswers = aRes.result.values.map(r => ({
-                            timestamp: r[0], sid: r[1], name: r[2], email: r[3], qId: r[4], answer: r[5]
+                            timestamp: r[0], sid: r[1], name: r[2], email: r[3], qId: r[4], answer: r[5], group: r[6] || ''
                         }));
                     } else {
                         allAnswers = [];
@@ -945,18 +1195,28 @@
                     const div = document.createElement('div');
                     div.className = 'card w-64 cursor-pointer hover:bg-white-10 transition flex flex-col justify-between';
                     div.onclick = () => openGroupFolder(groupName);
+                    
+                    // Generate folder link
+                    const folderLink = window.location.origin + "?quiz=" + spreadsheetId + "&group=" + encodeURIComponent(groupName);
+                    
                     // Folder Icon SVG
                     div.innerHTML = `
-                    <div class="flex items-center gap-2 text-accent mb-2">
+                    <div class="flex items-center gap-4 text-accent mb-2">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 32px; height: 32px; color: var(--primary);">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
                         </svg>
                         <h4 class="font-bold text-lg text-white">${groupName}</h4>
                     </div>
                     <p class="text-sm text-gray">문제 수: ${groupQs.length}</p>
-                    <div class="mt-4 flex justify-between text-sm border-t border-white-10 pt-2">
+                    <div class="mt-4 flex justify-between text-sm border-t border-white-10 pt-2" style="border: none;">
                         <span class="text-white">제출: ${totalSubmissions}</span>
                         <span class="text-white">채점: ${totalGraded}</span>
+                    </div>
+                    <div class="mt-4 pt-2 border-t border-white-10">
+                        <button onclick="event.stopPropagation(); copyFolderLink('${folderLink}', '${groupName}')" 
+                                class="btn btn-secondary text-xs w-full">
+                            📋 폴더 링크 복사
+                        </button>
                     </div>
                 `;
                     container.appendChild(div);
@@ -1219,6 +1479,15 @@ ${feedback}
                 window.open(`https://docs.google.com/spreadsheets/d/${spreadsheetId}`, '_blank');
             }
 
+            function copyFolderLink(link, groupName) {
+                navigator.clipboard.writeText(link).then(() => {
+                    alert(`"${groupName}" 폴더 링크가 클립보드에 복사되었습니다!\n\n${link}`);
+                }).catch(err => {
+                    console.error('링크 복사 실패:', err);
+                    alert('링크 복사에 실패했습니다. 수동으로 복사해주세요:\n' + link);
+                });
+            }
+
 
             // Theme Selector Logic
             function setTheme(theme) {
@@ -1375,6 +1644,7 @@ ${feedback}
                 }
 
                 // Header: [ID, Group, Type, Points, Question, Answer, Options, Rubric, Explanation]
+                // Note: Explanation is in column I (9th column), not G
                 const values = questions.map(q => [
                     q.id,
                     q.group,
@@ -1382,9 +1652,9 @@ ${feedback}
                     q.points,
                     q.content,
                     q.answer,
-                    q.options,
-                    q.rubric,
-                    q.explanation
+                    q.options || "",
+                    q.rubric || "",
+                    q.explanation || ""
                 ]);
 
                 try {
@@ -1407,12 +1677,7 @@ ${feedback}
                         }
                     });
 
-                    alert("문제가 저장되었습니다!");
-                    const link = window.location.origin + "?quiz=" + spreadsheetId;
-                    // Copy to clipboard
-                    navigator.clipboard.writeText(link).then(() => {
-                        alert("학생용 링크가 클립보드에 복사되었습니다: " + link);
-                    });
+                    alert("문제가 저장되었습니다!\n\n각 폴더별 링크는 '결과 및 채점' 탭에서 확인할 수 있습니다.");
 
                 } catch (err) {
                     console.error("Error saving to sheets", err);
@@ -1448,9 +1713,13 @@ ${feedback}
             function checkForStudentLink() {
                 const urlParams = new URLSearchParams(window.location.search);
                 const quizId = urlParams.get('quiz');
+                const groupFilter = urlParams.get('group');
                 if (quizId) {
                     spreadsheetId = quizId;
                     localStorage.setItem('grading_spreadsheet_id', quizId);
+                    if (groupFilter) {
+                        localStorage.setItem('student_group_filter', decodeURIComponent(groupFilter));
+                    }
                     showStudentLogin();
                 }
             }
@@ -1499,16 +1768,28 @@ ${feedback}
                     }
 
                     // Parse rows: [ID, Group, Type, Points, Question, Answer, Options, Rubric, Explanation]
-                    const loadedQuestions = rows.map(row => ({
+                    let loadedQuestions = rows.map(row => ({
                         id: row[0],
-                        group: row[1],
+                        group: row[1] || '기본 그룹',
                         type: row[2],
                         points: row[3],
                         content: row[4],
                         answer: row[5],
                         options: row[6] ? JSON.parse(row[6] || '[]') : [],
-                        // Rubric is hidden from student usually, or maybe shown?
+                        rubric: row[7] || '',
+                        explanation: row[8] || ''
                     }));
+
+                    // Filter by group if specified
+                    const groupFilter = localStorage.getItem('student_group_filter');
+                    if (groupFilter) {
+                        loadedQuestions = loadedQuestions.filter(q => q.group === groupFilter);
+                        if (loadedQuestions.length === 0) {
+                            document.getElementById('student-questions-container').innerHTML = 
+                                `"${groupFilter}" 그룹에 문제가 없습니다.`;
+                            return;
+                        }
+                    }
 
                     renderStudentQuiz(loadedQuestions);
                 } catch (err) {
@@ -1517,13 +1798,18 @@ ${feedback}
                 }
             }
 
+            // Store questions globally for grading
+            let studentQuestions = [];
+
             function renderStudentQuiz(qs) {
+                studentQuestions = qs; // Store for grading
                 const container = document.getElementById('student-questions-container');
                 container.innerHTML = '';
 
                 qs.forEach((q, idx) => {
                     const div = document.createElement('div');
                     div.className = 'card';
+                    div.id = `question-${q.id}`;
 
                     let inputHtml = '';
                     if (q.type === 'choice') {
@@ -1548,6 +1834,7 @@ ${feedback}
                     <h3 class="text-xl font-bold mb-2">Q${idx + 1}. (${q.points}점) <span class="text-sm text-gray">[${q.group || ''}]</span></h3>
                     <p class="mb-4 text-lg p-2 bg-white/5 rounded">${q.content}</p>
                     ${inputHtml}
+                    <div id="result-${q.id}" class="result-card hidden"></div>
                 `;
                     container.appendChild(div);
                 });
@@ -1559,6 +1846,85 @@ ${feedback}
                     document.getElementById('email-input-section').classList.remove('hidden');
                 } else {
                     document.getElementById('email-input-section').classList.add('hidden');
+                }
+            }
+
+            function showLoadingAnimation(qId) {
+                const resultDiv = document.getElementById(`result-${qId}`);
+                if (!resultDiv) return;
+                
+                resultDiv.classList.remove('hidden');
+                resultDiv.innerHTML = `
+                    <div class="loading-container">
+                        <div class="loading-cube">
+                            <div class="loading-cube-face">✓</div>
+                            <div class="loading-cube-face">✓</div>
+                            <div class="loading-cube-face">✓</div>
+                            <div class="loading-cube-face">✓</div>
+                            <div class="loading-cube-face">✓</div>
+                            <div class="loading-cube-face">✓</div>
+                        </div>
+                        <p class="text-lg font-bold">채점 중...</p>
+                    </div>
+                `;
+            }
+
+            function showGradingResult(qId, question, studentAnswer, score, feedback, isCorrect) {
+                const resultDiv = document.getElementById(`result-${qId}`);
+                if (!resultDiv) return;
+                
+                resultDiv.classList.remove('hidden');
+                resultDiv.className = `result-card ${isCorrect ? 'result-correct' : 'result-incorrect'}`;
+                resultDiv.innerHTML = `
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="text-2xl font-bold">${isCorrect ? '✓' : '✗'}</span>
+                        <span class="text-xl font-bold">${score}점 / ${question.points}점</span>
+                    </div>
+                    <p class="mb-2"><strong>정답:</strong> ${question.answer}</p>
+                    ${question.explanation ? `<p class="mb-2"><strong>해설:</strong> ${question.explanation}</p>` : ''}
+                    ${feedback ? `<p class="mb-2"><strong>피드백:</strong> ${feedback}</p>` : ''}
+                `;
+            }
+
+            async function gradeAnswer(question, studentAnswer) {
+                if (question.type === 'essay') {
+                    // AI 채점
+                    try {
+                        const res = await fetch('/.netlify/functions/grade', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                question: question.content,
+                                studentAnswer: studentAnswer,
+                                rubric: question.rubric,
+                                correctAnswer: question.answer,
+                                type: 'essay'
+                            })
+                        });
+                        const data = await res.json();
+                        return {
+                            score: data.score || 0,
+                            feedback: data.feedback || '',
+                            isCorrect: data.score >= question.points * 0.8
+                        };
+                    } catch (e) {
+                        console.error('AI Grading Error', e);
+                        return {
+                            score: 0,
+                            feedback: "AI 채점 실패: " + e.message,
+                            isCorrect: false
+                        };
+                    }
+                } else {
+                    // 선택형/단답형 즉시 채점
+                    const isCorrect = studentAnswer.trim() === question.answer.trim();
+                    return {
+                        score: isCorrect ? question.points : 0,
+                        feedback: isCorrect ? "정답입니다!" : `오답입니다. 정답: ${question.answer}`,
+                        isCorrect: isCorrect
+                    };
                 }
             }
 
@@ -1574,44 +1940,38 @@ ${feedback}
                 }
 
                 // Collect answers
-                // We need to know question IDs. 
-                // I'll re-fetch or use DOM. DOM is safer for what's rendered.
                 const inputs = document.querySelectorAll('#student-questions-container [name^="q_"]');
                 const answers = [];
 
                 inputs.forEach(input => {
                     const qId = input.name.split('_')[1];
+                    const value = input.type === 'radio' ? 
+                        (document.querySelector(`input[name="q_${qId}"]:checked`)?.value || '') : 
+                        input.value;
                     answers.push({
                         qId: qId,
-                        answer: input.value
+                        answer: value
                     });
                 });
 
-                // Format for Sheets: One row per Student? Or One row per Answer?
-                // "Student ID, Name, Answer1, Answer2..." -> Columns dynamic?
-                // Or "Student ID, Name, Q_ID, Answer, Email" (Long format)
-                // Prompt: "students ... submit ... answers ... stored in 'answer' sheet"
                 const timestamp = new Date().toISOString();
-
-                // Apps Script Web App URL
-                const APPS_CRIPT_URL = "https://script.google.com/macros/s/AKfycbydEECW1ck2Zx1J452_BuM253u_mobHxT3ic0EEJRhFg8utADEfe7h4hIOa-z5h69gauQ/exec";
+                const APPS_CRIPT_URL = "https://script.google.com/macros/s/AKfycbyQzOOhN5CV_A-hFeB5Y-yWjbFtt_zO1PzCZ91Tg-mpQc00prJX29PN5tbD3VxNiJjj/exec";
 
                 try {
-                    // Send one request per answer (or modify Apps Script to accept array - current script handles ONE row per request implies simple logic. 
-                    // Wait, script `data` is object. `sheet.appendRow`.
-                    // To be safe and efficient, we should loop on client side OR update script to handle array.
-                    // Provided script handles SINGLE object: {timestamp, ..., qId, answer}.
-                    // So we loop requests.
-
-                    let successCount = 0;
-
-                    // Show loading state
                     const btn = document.querySelector('button[onclick="submitQuiz()"]');
                     const originalText = btn.innerText;
                     btn.innerText = "제출 중...";
                     btn.disabled = true;
 
+                    // Submit answers and grade immediately
                     for (const a of answers) {
+                        const question = studentQuestions.find(q => q.id == a.qId);
+                        if (!question) continue;
+
+                        // Show loading
+                        showLoadingAnimation(a.qId);
+
+                        // Submit to sheet
                         const payload = {
                             timestamp,
                             sid,
@@ -1621,30 +1981,62 @@ ${feedback}
                             answer: a.answer
                         };
 
-                        // Use fetch with no-cors or standard text/plain to avoid preflight issues if simple
-                        // Google Apps Script usually needs 'Content-Type': 'text/plain;charset=utf-8' for POST to work easily without CORS options request failure if not handled well.
-                        // But we used 'no-cors' trick usually or just standard fetch.
-                        // Let's try standard fetch.
-
                         await fetch(APPS_CRIPT_URL, {
                             method: 'POST',
-                            mode: 'no-cors', // Important for opaque response from Google Script
+                            mode: 'no-cors',
                             headers: {
                                 'Content-Type': 'text/plain'
                             },
                             body: JSON.stringify(payload)
                         });
-                        successCount++;
+
+                        // Grade immediately
+                        const gradingResult = await gradeAnswer(question, a.answer);
+                        showGradingResult(a.qId, question, a.answer, gradingResult.score, gradingResult.feedback, gradingResult.isCorrect);
+
+                        // Auto-grade essay questions and save to SCORE sheet
+                        if (question.type === 'essay' && gradingResult.score > 0) {
+                            await autoGradeAndSave(a.qId, sid, sname, gradingResult.score, gradingResult.feedback, question.type);
+                        }
                     }
 
-                    alert("제출이 완료되었습니다! 수고하셨습니다.");
-                    location.reload();
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                    alert("제출 및 채점이 완료되었습니다!");
 
                 } catch (err) {
                     console.error("Submission error", err);
                     alert("제출 중 오류가 발생했습니다. 다시 시도해주세요.");
-                    btn.innerText = originalText;
+                    const btn = document.querySelector('button[onclick="submitQuiz()"]');
+                    btn.innerText = "답안 제출하기";
                     btn.disabled = false;
+                }
+            }
+
+            async function autoGradeAndSave(qId, sid, sname, score, feedback, type) {
+                try {
+                    if (!gapi.client.sheets || !spreadsheetId) return;
+                    
+                    await checkAndWriteHeader('SCORE', ["Timestamp", "StudentID", "Name", "Q_ID", "Score", "Feedback", "Type"]);
+                    
+                    await gapi.client.sheets.spreadsheets.values.append({
+                        spreadsheetId: spreadsheetId,
+                        range: 'SCORE!A2',
+                        valueInputOption: 'RAW',
+                        resource: {
+                            values: [[
+                                new Date().toISOString(),
+                                sid,
+                                sname,
+                                qId,
+                                score,
+                                feedback,
+                                type
+                            ]]
+                        }
+                    });
+                } catch (err) {
+                    console.error("Auto-grade save error", err);
                 }
             }
 
