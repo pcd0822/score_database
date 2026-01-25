@@ -394,47 +394,32 @@
             transition: border-color 0.3s;
         }
 
-        [data-theme="light"] input,
-        [data-theme="light"] select,
-        [data-theme="light"] textarea {
-            background-color: #f9fafb;
-        }
-
         /* Theme-specific styles */
         [data-theme="light"] {
             --bg-dark: #f6f8fa;
             --bg-card: #ffffff;
             --text-light: #24292f;
             --text-gray: #57606a;
-            --primary: #8250df;
-            --primary-dark: #6f42c1;
-            --secondary: #d73a49;
-            --success: #1a7f37;
-            --danger: #cf222e;
+            --primary: #a78bfa;
+            --primary-dark: #8b5cf6;
+            --secondary: #f0abfc;
+            --success: #7ee787;
+            --danger: #ff7b72;
         }
 
-        [data-theme="nature"] {
-            --bg-dark: #0d1f0d;
-            --bg-card: #1a2e1a;
-            --text-light: #c8e6c9;
-            --text-gray: #81c784;
-            --primary: #66bb6a;
-            --primary-dark: #4caf50;
-            --secondary: #a5d6a7;
-            --success: #81c784;
-            --danger: #ef5350;
+        [data-theme="light"] input,
+        [data-theme="light"] select,
+        [data-theme="light"] textarea {
+            background-color: #ffffff;
+            color: #24292f;
+            border: 1px solid #d0d7de;
         }
 
-        [data-theme="cyber"] {
-            --bg-dark: #0d0d1a;
-            --bg-card: #1a1a2e;
-            --text-light: #e0e0ff;
-            --text-gray: #a0a0d0;
-            --primary: #9d4edd;
-            --primary-dark: #7b2cbf;
-            --secondary: #c77dff;
-            --success: #90e0ef;
-            --danger: #ff6b9d;
+        [data-theme="light"] input:focus,
+        [data-theme="light"] select:focus,
+        [data-theme="light"] textarea:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.1);
         }
 
         /* Enhanced shadows for depth */
@@ -446,12 +431,28 @@
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
         }
 
-        [data-theme="nature"] .card {
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(34, 197, 94, 0.1);
+        /* Light theme buttons - pastel tones */
+        [data-theme="light"] .btn-primary {
+            background: linear-gradient(135deg, #a78bfa, #8b5cf6);
+            color: white;
+            box-shadow: 0 4px 6px -1px rgba(167, 139, 250, 0.3);
         }
 
-        [data-theme="cyber"] .card {
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 245, 255, 0.2), 0 0 20px rgba(0, 245, 255, 0.1);
+        [data-theme="light"] .btn-primary:hover {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            box-shadow: 0 10px 15px -3px rgba(167, 139, 250, 0.4);
+        }
+
+        [data-theme="light"] .btn-secondary {
+            background: rgba(240, 171, 252, 0.2);
+            color: var(--text-light);
+            border: 1px solid rgba(240, 171, 252, 0.3);
+            box-shadow: 0 4px 6px -1px rgba(240, 171, 252, 0.2);
+        }
+
+        [data-theme="light"] .btn-secondary:hover {
+            background: rgba(240, 171, 252, 0.3);
+            border-color: rgba(240, 171, 252, 0.5);
         }
 
         input:focus,
@@ -786,8 +787,8 @@
 
             <!-- Results Tab -->
             <div id="tab-results" class="hidden fade-in">
-                <h2 class="text-2xl font-bold mb-6">채점 및 결과</h2>
-                <div class="flex gap-6 mb-8">
+                <h2 class="text-2xl font-bold mb-10">채점 및 결과</h2>
+                <div class="flex gap-6 mb-12">
                     <div class="card flex-1">
                         <h3 class="text-gray mb-2">제출된 답안</h3>
                         <p id="total-submissions" class="text-3xl font-bold" style="border: none;">0</p>
@@ -798,8 +799,8 @@
                     </div>
                 </div>
 
-                <div class="card mb-6">
-                    <div class="flex justify-between items-center mb-4">
+                <div class="card mb-12">
+                    <div class="flex justify-between items-center mb-6">
                         <h3 class="text-xl">문항별 폴더</h3>
                         <div class="flex gap-2">
                             <button onclick="loadDashboardData()" class="btn btn-secondary">새로고침</button>
@@ -811,12 +812,12 @@
                 </div>
 
                 <!-- Expanded Folder View (Hidden by default) -->
-                <div id="folder-detail-view" class="hidden card mt-4">
-                    <div class="flex justify-between mb-4">
+                <div id="folder-detail-view" class="hidden card mt-12">
+                    <div class="flex justify-between mb-6">
                         <h3 id="folder-title" class="text-xl font-bold">Q_ID Detail</h3>
                         <button onclick="closeFolder()" class="btn btn-secondary text-sm">닫기</button>
                     </div>
-                    <div id="folder-answers-list" class="space-y-4"></div>
+                    <div id="folder-answers-list" class="space-y-6"></div>
                 </div>
             </div>
         </div>
@@ -1050,7 +1051,7 @@
                     }
 
                     if (newScores.length > 0) {
-                        await checkAndWriteHeader('SCORE', ["Timestamp", "StudentID", "Name", "Q_ID", "Score", "Feedback", "Type"]);
+                        await checkAndWriteHeader('SCORE', ["Timestamp", "StudentID", "Name", "Q_ID", "Score", "Feedback", "Type", "EmailStatus"]);
 
                         await gapi.client.sheets.spreadsheets.values.append({
                             spreadsheetId: spreadsheetId,
@@ -1114,15 +1115,15 @@
                         allAnswers = [];
                     }
 
-                    // Load Scores
+                    // Load Scores (including EmailStatus column)
                     const sRes = await gapi.client.sheets.spreadsheets.values.get({
                         spreadsheetId: spreadsheetId,
-                        range: 'SCORE!A2:G'
+                        range: 'SCORE!A2:H'
                     });
 
                     if (sRes.result.values) {
                         allScores = sRes.result.values.map(r => ({
-                            sid: r[1], qId: r[3], score: r[4], feedback: r[5]
+                            sid: r[1], qId: r[3], score: r[4], feedback: r[5], emailStatus: r[7] || ''
                         }));
                     } else {
                         allScores = [];
@@ -1254,7 +1255,7 @@
                     const gradedCount = qAnswers.filter(a => allScores.find(s => s.sid === a.sid && s.qId === a.qId)).length;
 
                     const qDiv = document.createElement('div');
-                    qDiv.className = 'p-4 border border-white/10 rounded bg-white/5 mb-4';
+                    qDiv.className = 'p-4 border border-white/10 rounded bg-white/5 mb-6';
                     qDiv.innerHTML = `
                     <div class="flex justify-between items-center cursor-pointer" onclick="toggleAnswers('${q.id}')">
                         <div>
@@ -1285,24 +1286,31 @@
                             const feedback = isGraded ? scoreData.feedback : '';
 
                             const aDiv = document.createElement('div');
-                            aDiv.className = 'p-3 bg-black/20 rounded mb-4';
+                            aDiv.className = 'p-4 bg-black/20 rounded mb-6';
                             aDiv.innerHTML = `
-                             <div class="flex justify-between text-sm mb-2">
+                             <div class="flex justify-between text-sm mb-4">
                                 <span class="font-bold text-primary">${a.name} (${a.sid})</span>
                                 <span class="${isGraded ? 'text-success' : 'text-gray'}">${isGraded ? score + '점 / ' + q.points + '점' : '미채점'}</span>
                              </div>
-                             <div class="mb-3">
-                                <label class="text-xs text-gray block mb-1">학생 답안:</label>
-                                <p class="text-sm text-white/90 p-2 bg-white/5 rounded">${a.answer || '(답안 없음)'}</p>
+                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label class="text-xs text-gray block mb-2">학생 답안:</label>
+                                    <p class="text-sm text-white/90 p-3 bg-white/5 rounded min-h-[80px]">${a.answer || '(답안 없음)'}</p>
+                                </div>
+                                ${isGraded ? `
+                                <div>
+                                    <label class="text-xs text-gray block mb-2">채점 결과:</label>
+                                    <p class="text-sm text-white/90 p-3 bg-white/5 rounded min-h-[80px]">${feedback || '(피드백 없음)'}</p>
+                                </div>
+                                ` : `
+                                <div>
+                                    <label class="text-xs text-gray block mb-2">채점 결과:</label>
+                                    <p class="text-sm text-gray p-3 bg-white/5 rounded min-h-[80px]">미채점</p>
+                                </div>
+                                `}
                              </div>
-                             ${isGraded ? `
-                             <div class="mb-3">
-                                <label class="text-xs text-gray block mb-1">채점 결과:</label>
-                                <p class="text-sm text-white/90 p-2 bg-white/5 rounded">${feedback || '(피드백 없음)'}</p>
-                             </div>
-                             ` : ''}
-                             <div class="mt-3">
-                                <label class="text-xs text-secondary block mb-1">교사 피드백 작성</label>
+                             <div class="mt-4 pt-4 border-t border-white/10">
+                                <label class="text-xs text-secondary block mb-2">교사 피드백 작성</label>
                                 <div class="flex gap-2">
                                     <textarea id="fb_${a.sid}_${a.qId}" class="w-full text-xs p-2 rounded bg-white/5 border border-white/10" rows="3" placeholder="피드백을 입력하세요">${feedback}</textarea>
                                     <button onclick="saveFeedbackAndSend('${a.sid}', '${a.qId}', '${a.email}', '${a.name}', '${q.content}', ${score}, '${a.timestamp}')" 
@@ -1386,13 +1394,14 @@
                         q.id,
                         score,
                         feedback,
-                        q.type
+                        q.type,
+                        '' // EmailStatus - 초기값은 빈 문자열
                     ]);
                 }
 
                 if (newScores.length > 0) {
                     try {
-                        await checkAndWriteHeader('SCORE', ["Timestamp", "StudentID", "Name", "Q_ID", "Score", "Feedback", "Type"]);
+                        await checkAndWriteHeader('SCORE', ["Timestamp", "StudentID", "Name", "Q_ID", "Score", "Feedback", "Type", "EmailStatus"]);
 
                         await gapi.client.sheets.spreadsheets.values.append({
                             spreadsheetId: spreadsheetId,
@@ -1427,7 +1436,7 @@
                     // 1. SCORE 시트에서 해당 행 찾기 및 업데이트
                     const scoreRes = await gapi.client.sheets.spreadsheets.values.get({
                         spreadsheetId: spreadsheetId,
-                        range: 'SCORE!A2:G'
+                        range: 'SCORE!A2:H'
                     });
 
                     if (!scoreRes.result.values) {
@@ -1460,7 +1469,8 @@
                         }
                     });
 
-                    // 2. 이메일 전송
+                    // 2. 이메일 전송 및 상태 저장
+                    let emailStatus = '';
                     if (email) {
                         if (!confirm(`${name} 학생에게 채점 결과를 전송하시겠습니까?`)) {
                             alert("피드백이 저장되었습니다.");
@@ -1474,6 +1484,16 @@
                                 await gapi.client.load('gmail', 'v1');
                             } catch (loadErr) {
                                 console.error("Gmail API load error", loadErr);
+                                emailStatus = 'fail';
+                                // 이메일 상태 저장
+                                await gapi.client.sheets.spreadsheets.values.update({
+                                    spreadsheetId: spreadsheetId,
+                                    range: `SCORE!H${rowIndex}`,
+                                    valueInputOption: 'RAW',
+                                    resource: {
+                                        values: [[emailStatus]]
+                                    }
+                                });
                                 alert("피드백은 저장되었지만 Gmail API를 초기화할 수 없습니다. 페이지를 새로고침한 후 다시 시도해주세요.");
                                 await loadDashboardData();
                                 return;
@@ -1516,12 +1536,24 @@ ${feedback}
                                     'raw': encodedMessage
                                 }
                             });
+                            emailStatus = 'success';
                             alert("피드백이 저장되고 이메일이 전송되었습니다.");
                         } catch (err) {
                             console.error("Email Send Error", err);
+                            emailStatus = 'fail';
                             const errorMsg = err.result?.error?.message || err.message || "알 수 없는 오류";
                             alert("피드백은 저장되었지만 이메일 전송에 실패했습니다: " + errorMsg);
                         }
+
+                        // 이메일 전송 상태 저장 (H열, 인덱스 7)
+                        await gapi.client.sheets.spreadsheets.values.update({
+                            spreadsheetId: spreadsheetId,
+                            range: `SCORE!H${rowIndex}`,
+                            valueInputOption: 'RAW',
+                            resource: {
+                                values: [[emailStatus]]
+                            }
+                        });
                     } else {
                         alert("피드백이 저장되었습니다.");
                     }
@@ -2106,7 +2138,7 @@ ${feedback}
                 try {
                     if (!gapi.client.sheets || !spreadsheetId) return;
                     
-                    await checkAndWriteHeader('SCORE', ["Timestamp", "StudentID", "Name", "Q_ID", "Score", "Feedback", "Type"]);
+                    await checkAndWriteHeader('SCORE', ["Timestamp", "StudentID", "Name", "Q_ID", "Score", "Feedback", "Type", "EmailStatus"]);
                     
                     await gapi.client.sheets.spreadsheets.values.append({
                         spreadsheetId: spreadsheetId,
@@ -2120,7 +2152,8 @@ ${feedback}
                                 qId,
                                 score,
                                 feedback,
-                                type
+                                type,
+                                '' // EmailStatus - 초기값은 빈 문자열
                             ]]
                         }
                     });
@@ -2145,8 +2178,6 @@ ${feedback}
                 style="width: auto; height: auto;">
                 <option value="dark">🌙 Dark</option>
                 <option value="light">☀️ Light</option>
-                <option value="nature">🌿 Nature</option>
-                <option value="cyberpunk">👾 Cyber</option>
             </select>
         </div>
 </body>
