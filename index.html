@@ -5,10 +5,115 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smart AI Grading System</title>
+    <!-- Google Helper Functions (Moved to Head) -->
+    <script>
+        // Google API Config
+        const CLIENT_ID = '837113843065-r43b5g2f283ma3393nke4fcf25v0afi8.apps.googleusercontent.com';
+        const API_KEY = 'AIzaSyAZ93RRH3OWFFp0stUEXNtnNHZPDgcaMIM';
+        const DISCOVERY_DOC = 'https://sheets.googleapis.com/$discovery/rest?version=v4';
+        const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/gmail.send';
+
+        let tokenClient;
+        let gapiInited = false;
+        let gisInited = false;
+        let spreadsheetId = localStorage.getItem('grading_spreadsheet_id') || '';
+
+        // State Management
+        let currentUser = null;
+        let questions = [];
+
+        // Initialize Google API
+        function gapiLoaded() {
+            gapi.load('client', initializeGapiClient);
+        }
+
+        async function initializeGapiClient() {
+            await gapi.client.init({
+                apiKey: API_KEY,
+                discoveryDocs: [DISCOVERY_DOC],
+            });
+            gapiInited = true;
+            maybeEnableButtons();
+        }
+
+        function gisLoaded() {
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+                callback: '', // defined later
+            });
+            gisInited = true;
+            maybeEnableButtons();
+        }
+
+        function maybeEnableButtons() {
+            if (gapiInited && gisInited) {
+                console.log("Google API Initialized");
+            }
+        }
+
+        function handleCredentialResponse(response) {
+            console.log("Encoded JWT ID token: " + response.credential);
+            const responsePayload = decodeJwtResponse(response.credential);
+
+            currentUser = {
+                email: responsePayload.email,
+                name: responsePayload.name,
+                picture: responsePayload.picture,
+                role: 'teacher'
+            };
+
+            if (!tokenClient) {
+                // If this happens, it means GIS loaded but tokenClient wasn't set up? 
+                // Should not happen with onload ordering, but good to check.
+                console.warn("tokenClient not ready yet.");
+                return;
+            }
+            requestAccessToken();
+        }
+
+        function decodeJwtResponse(token) {
+            var base64Url = token.split('.')[1];
+            var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            var jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function (c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            return JSON.parse(jsonPayload);
+        }
+
+        function requestAccessToken() {
+            tokenClient.callback = async (resp) => {
+                if (resp.error !== undefined) {
+                    console.error("Auth Error", resp);
+                    alert("인증 오류가 발생했습니다: " + JSON.stringify(resp));
+                    throw (resp);
+                }
+                console.log("Access Token Received");
+                try {
+                    await setupSpreadsheet();
+                    showTeacherDashboard();
+                } catch (err) {
+                    console.error("Spreadsheet Setup Error", err);
+                    alert("스프레드시트 설정 중 오류가 발생했습니다. 콘솔을 확인하세요.\n" + (err.result?.error?.message || err.message));
+                }
+            };
+
+            if (gapi.client.getToken() === null) {
+                tokenClient.requestAccessToken({ prompt: 'consent' });
+            } else {
+                tokenClient.requestAccessToken({ prompt: '' });
+            }
+        }
+
+        // Functions defined below (setupSpreadsheet, etc.) are available since they are var-hoisted or function declarations
+        // but to be safe, we'll keep the core logic/UI stuff in the body script or move it all here.
+        // For now, moving ONLY the init/auth stuff here is enough to catch the onload.
+    </script>
+
     <!-- Google Identity Services -->
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://accounts.google.com/gsi/client" async defer onload="gisLoaded()"></script>
     <!-- Google API Client -->
-    <script src="https://apis.google.com/js/api.js"></script>
+    <script src="https://apis.google.com/js/api.js" async defer onload="gapiLoaded()"></script>
 
     <!-- Google Fonts for Premium Look -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -497,107 +602,9 @@
 
         <!-- JS Logic -->
         <script>
-            // Google API Config
-            // IMPORTANT: Replace these with your actual credentials
-            const CLIENT_ID = '837113843065-r43b5g2f283ma3393nke4fcf25v0afi8.apps.googleusercontent.com';
-            const API_KEY = 'AIzaSyAZ93RRH3OWFFp0stUEXNtnNHZPDgcaMIM';
-            const DISCOVERY_DOC = 'https://sheets.googleapis.com/$discovery/rest?version=v4';
-            const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/gmail.send';
-
-            let tokenClient;
-            let gapiInited = false;
-            let gisInited = false;
-            let spreadsheetId = localStorage.getItem('grading_spreadsheet_id') || '';
-
-            // State Management
-            let currentUser = null;
-            let questions = [];
-
-            // Initialize Google API
-            function gapiLoaded() {
-                gapi.load('client', initializeGapiClient);
-            }
-
-            async function initializeGapiClient() {
-                await gapi.client.init({
-                    apiKey: API_KEY,
-                    discoveryDocs: [DISCOVERY_DOC],
-                });
-                gapiInited = true;
-                maybeEnableButtons();
-            }
-
-            function gisLoaded() {
-                tokenClient = google.accounts.oauth2.initTokenClient({
-                    client_id: CLIENT_ID,
-                    scope: SCOPES,
-                    callback: '', // defined later
-                });
-                gisInited = true;
-                maybeEnableButtons();
-            }
-
-            function maybeEnableButtons() {
-                if (gapiInited && gisInited) {
-                    console.log("Google API Initialized");
-                }
-            }
-
-            // Auth Logic
-            function handleCredentialResponse(response) {
-                console.log("Encoded JWT ID token: " + response.credential);
-                const responsePayload = decodeJwtResponse(response.credential);
-
-                currentUser = {
-                    email: responsePayload.email,
-                    name: responsePayload.name,
-                    picture: responsePayload.picture,
-                    role: 'teacher' // Defaulting to teacher for the auth flow
-                };
-
-                // Check for access token
-                if (!tokenClient) {
-                    alert("Google 인증 모듈이 아직 로드되지 않았습니다. 3초 뒤에 다시 시도해주세요.");
-                    return;
-                }
-                requestAccessToken();
-            }
-
-            function decodeJwtResponse(token) {
-                var base64Url = token.split('.')[1];
-                var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-                var jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function (c) {
-                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-                }).join(''));
-                return JSON.parse(jsonPayload);
-            }
-
-            function requestAccessToken() {
-                tokenClient.callback = async (resp) => {
-                    if (resp.error !== undefined) {
-                        console.error("Auth Error", resp);
-                        alert("인증 오류가 발생했습니다: " + JSON.stringify(resp));
-                        throw (resp);
-                    }
-                    console.log("Access Token Received");
-                    try {
-                        await setupSpreadsheet(); // Check/Create sheets
-                        showTeacherDashboard();
-                    } catch (err) {
-                        console.error("Spreadsheet Setup Error", err);
-                        alert("스프레드시트 설정 중 오류가 발생했습니다. 콘솔을 확인하세요.\n" + (err.result?.error?.message || err.message));
-                    }
-                };
-
-                if (gapi.client.getToken() === null) {
-                    // Prompt the user to select a Google Account and ask for consent to share their data
-                    // when establishing a new session.
-                    tokenClient.requestAccessToken({ prompt: 'consent' });
-                } else {
-                    // Skip display of account chooser and consent dialog for an existing session.
-                    tokenClient.requestAccessToken({ prompt: '' });
-                }
-            }
+            // Google API Config - MOVED TO HEAD
+            // The functions gapiLoaded, gisLoaded, initializeGapiClient, checkGapi, etc. 
+            // are now in the head to support onload callbacks.
 
             // Sheets Logic
             async function setupSpreadsheet() {
