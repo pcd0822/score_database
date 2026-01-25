@@ -1050,18 +1050,28 @@ ${feedback}
             }
 
             function switchTab(tabName) {
-                document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-                // Find the nav item that calls this function (simplified selection)
-                // Ideally we pass 'this' or use ID, but iterating is fine for small app
+                try {
+                    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
 
-                document.getElementById('tab-quiz-setup').classList.add('hidden');
-                document.getElementById('tab-results').classList.add('hidden');
+                    document.getElementById('tab-quiz-setup').classList.add('hidden');
+                    document.getElementById('tab-results').classList.add('hidden');
 
-                document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+                    const target = document.getElementById(`tab-${tabName}`);
+                    if (target) {
+                        target.classList.remove('hidden');
+                        target.classList.add('fade-in'); // Re-trigger animation
+                    }
 
-                // Highlight sidebar
-                if (tabName === 'quiz-setup') document.querySelectorAll('.nav-item')[0].classList.add('active');
-                if (tabName === 'results') document.querySelectorAll('.nav-item')[1].classList.add('active');
+                    // Highlight sidebar
+                    if (tabName === 'quiz-setup') document.querySelectorAll('.nav-item')[0].classList.add('active');
+                    if (tabName === 'results') {
+                        document.querySelectorAll('.nav-item')[1].classList.add('active');
+                        loadDashboardData(); // Refresh data
+                    }
+                } catch (e) {
+                    console.error("Tab Switch Error", e);
+                    alert("탭 전환 중 오류가 발생했습니다: " + e.message);
+                }
             }
 
             function openSpreadsheet() {
