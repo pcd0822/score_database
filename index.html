@@ -543,6 +543,60 @@
             overflow-y: auto;
         }
 
+        #quiz-setup-grid {
+            gap: 3rem;
+        }
+
+        @media (min-width: 768px) {
+            #quiz-setup-grid {
+                grid-template-columns: minmax(400px, 1.67fr) minmax(400px, 1.67fr);
+                gap: 5rem;
+                max-width: 95%;
+            }
+            
+            #quiz-setup-grid .card {
+                min-width: 0;
+                width: 100% !important;
+                max-width: none;
+            }
+        }
+
+        /* Results Tab Layout */
+        #results-stats-container {
+            gap: 1.5rem;
+            margin: 1rem 0.5rem 2rem 0.5rem;
+            justify-content: flex-start;
+        }
+
+        .results-stat-card {
+            flex: 0 0 calc(25% - 0.75rem);
+            min-width: 200px;
+            max-width: 300px;
+            margin: 0.5rem;
+        }
+
+        .results-folders-card {
+            width: calc(100% - 1rem);
+            margin: 1rem 0.5rem;
+            padding: 1.5rem;
+            box-sizing: border-box;
+        }
+
+        @media (max-width: 768px) {
+            .results-stat-card {
+                flex: 0 0 calc(50% - 0.75rem);
+            }
+            
+            #results-stats-container {
+                margin: 0.5rem;
+            }
+            
+            .results-folders-card {
+                width: calc(100% - 1rem);
+                margin: 1rem 0.5rem;
+            }
+        }
+
         .nav-item {
             padding: 1rem;
             margin-bottom: 0.5rem;
@@ -715,7 +769,7 @@
             <!-- Quiz Setup Tab -->
             <div id="tab-quiz-setup" class="fade-in">
                 <h2 class="text-2xl font-bold mb-6">문제 출제</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div id="quiz-setup-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="card">
                         <h3 class="text-xl mb-4">문제 입력</h3>
 
@@ -825,18 +879,18 @@
             <!-- Results Tab -->
             <div id="tab-results" class="hidden fade-in">
                 <h2 class="text-2xl font-bold mb-12">채점 및 결과</h2>
-                <div class="flex gap-6 mb-16">
-                    <div class="card flex-1">
+                <div id="results-stats-container" class="flex gap-6 mb-16">
+                    <div class="card results-stat-card">
                         <h3 class="text-gray mb-2">제출된 답안</h3>
                         <p id="total-submissions" class="text-3xl font-bold" style="border: none;">0</p>
                     </div>
-                    <div class="card flex-1">
+                    <div class="card results-stat-card">
                         <h3 class="text-gray mb-2">채점 완료</h3>
                         <p id="total-graded" class="text-3xl font-bold" style="border: none;">0</p>
                     </div>
                 </div>
 
-                <div class="card mb-16">
+                <div class="card results-folders-card mb-16">
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-xl">문항별 폴더</h3>
                         <div class="flex gap-2">
