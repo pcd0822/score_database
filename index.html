@@ -54,13 +54,26 @@
             if (gapiInited && gisInited) {
                 console.log("Google API Initialized");
                 
-                // 로그인 상태 복원 시도
-                await restoreLoginState();
+                // 학생 링크가 있으면 로그인 상태 복원하지 않음
+                const urlParams = new URLSearchParams(window.location.search);
+                const quizId = urlParams.get('quiz');
+                if (!quizId) {
+                    // 학생 링크가 없을 때만 로그인 상태 복원 시도
+                    await restoreLoginState();
+                }
             }
         }
 
         async function restoreLoginState() {
             try {
+                // 학생 링크가 있으면 로그인 상태 복원하지 않음
+                const urlParams = new URLSearchParams(window.location.search);
+                const quizId = urlParams.get('quiz');
+                if (quizId) {
+                    console.log("Student link detected, skipping login state restoration");
+                    return false;
+                }
+                
                 // 저장된 토큰 확인
                 const savedToken = localStorage.getItem('google_access_token');
                 const savedUser = localStorage.getItem('google_user');
@@ -1208,14 +1221,25 @@
 
             // Navigation Logic
             function showLogin() {
-                document.getElementById('login-view').classList.remove('hidden');
-                document.getElementById('student-login-view').classList.add('hidden');
+                // 모든 화면 숨기기
                 document.getElementById('teacher-dashboard').classList.add('hidden');
+                document.getElementById('teacher-dashboard').classList.remove('flex');
+                document.getElementById('student-login-view').classList.add('hidden');
+                document.getElementById('student-quiz-view').classList.add('hidden');
+                
+                // 일반 로그인 화면만 표시
+                document.getElementById('login-view').classList.remove('hidden');
             }
 
             function showStudentLogin() {
+                // 모든 교사 관련 화면 숨기기
                 document.getElementById('login-view').classList.add('hidden');
+                document.getElementById('teacher-dashboard').classList.add('hidden');
+                document.getElementById('teacher-dashboard').classList.remove('flex');
+                
+                // 학생 로그인 화면만 표시
                 document.getElementById('student-login-view').classList.remove('hidden');
+                document.getElementById('student-quiz-view').classList.add('hidden');
             }
 
             function logout() {
@@ -1225,7 +1249,12 @@
             }
 
             function showTeacherDashboard() {
+                // 모든 학생 화면 숨기기
                 document.getElementById('login-view').classList.add('hidden');
+                document.getElementById('student-login-view').classList.add('hidden');
+                document.getElementById('student-quiz-view').classList.add('hidden');
+                
+                // 교사 대시보드만 표시
                 document.getElementById('teacher-dashboard').classList.remove('hidden');
                 document.getElementById('teacher-dashboard').classList.add('flex');
 
@@ -1318,22 +1347,43 @@
                                     })
                                 });
 
+                                // 응답 텍스트 먼저 가져오기
+                                const responseText = await res.text();
+                                
                                 // 응답 상태 확인
                                 if (!res.ok) {
-                                    const errorText = await res.text();
-                                    console.error('AI Grading API Error:', res.status, errorText);
+                                    console.error('AI Grading API Error:', res.status, responseText);
+                                    
+                                    // JSON 형식의 에러 응답인지 확인
+                                    let errorData;
+                                    try {
+                                        errorData = JSON.parse(responseText);
+                                        if (errorData.error && errorData.score !== undefined) {
+                                            score = errorData.score || 0;
+                                            feedback = errorData.feedback || errorData.error || '채점 중 오류가 발생했습니다.';
+                                            continue; // 다음 답안으로
+                                        }
+                                    } catch (parseErr) {
+                                        // JSON이 아닌 경우
+                                    }
+                                    
                                     throw new Error(`채점 API 오류 (${res.status})`);
                                 }
 
-                                // Content-Type 확인
-                                const contentType = res.headers.get('content-type');
-                                if (!contentType || !contentType.includes('application/json')) {
-                                    const text = await res.text();
-                                    console.error('Non-JSON response:', text.substring(0, 200));
-                                    throw new Error('채점 서버 응답 오류');
+                                // JSON 파싱 시도
+                                let data;
+                                try {
+                                    data = JSON.parse(responseText);
+                                } catch (parseError) {
+                                    console.error('Failed to parse JSON response:', parseError);
+                                    console.error('Response text:', responseText.substring(0, 500));
+                                    throw new Error('채점 서버 응답을 파싱할 수 없습니다.');
                                 }
-
-                                const data = await res.json();
+                                
+                                // 에러 필드가 있지만 score와 feedback도 있는 경우 처리
+                                if (data.error && data.score === undefined) {
+                                    throw new Error(data.error || '채점 중 오류가 발생했습니다.');
+                                }
                                 score = typeof data.score === 'number' ? data.score : 0;
                                 feedback = typeof data.feedback === 'string' ? data.feedback : '채점 결과를 가져올 수 없습니다.';
                             } catch (e) {
@@ -2253,22 +2303,43 @@
                                 })
                             });
 
+                            // 응답 텍스트 먼저 가져오기
+                            const responseText = await res.text();
+                            
                             // 응답 상태 확인
                             if (!res.ok) {
-                                const errorText = await res.text();
-                                console.error('AI Grading API Error:', res.status, errorText);
+                                console.error('AI Grading API Error:', res.status, responseText);
+                                
+                                // JSON 형식의 에러 응답인지 확인
+                                let errorData;
+                                try {
+                                    errorData = JSON.parse(responseText);
+                                    if (errorData.error && errorData.score !== undefined) {
+                                        score = errorData.score || 0;
+                                        feedback = errorData.feedback || errorData.error || '채점 중 오류가 발생했습니다.';
+                                        continue; // 다음 답안으로
+                                    }
+                                } catch (parseErr) {
+                                    // JSON이 아닌 경우
+                                }
+                                
                                 throw new Error(`채점 API 오류 (${res.status})`);
                             }
 
-                            // Content-Type 확인
-                            const contentType = res.headers.get('content-type');
-                            if (!contentType || !contentType.includes('application/json')) {
-                                const text = await res.text();
-                                console.error('Non-JSON response:', text.substring(0, 200));
-                                throw new Error('채점 서버 응답 오류');
+                            // JSON 파싱 시도
+                            let data;
+                            try {
+                                data = JSON.parse(responseText);
+                            } catch (parseError) {
+                                console.error('Failed to parse JSON response:', parseError);
+                                console.error('Response text:', responseText.substring(0, 500));
+                                throw new Error('채점 서버 응답을 파싱할 수 없습니다.');
                             }
-
-                            const data = await res.json();
+                            
+                            // 에러 필드가 있지만 score와 feedback도 있는 경우 처리
+                            if (data.error && data.score === undefined) {
+                                throw new Error(data.error || '채점 중 오류가 발생했습니다.');
+                            }
                             score = typeof data.score === 'number' ? data.score : 0;
                             feedback = typeof data.feedback === 'string' ? data.feedback : '채점 결과를 가져올 수 없습니다.';
                         } catch (e) {
@@ -2827,12 +2898,30 @@ ${feedback}
                 const quizId = urlParams.get('quiz');
                 const groupFilter = urlParams.get('group');
                 if (quizId) {
+                    // 학생 모드 활성화
                     spreadsheetId = quizId;
                     localStorage.setItem('grading_spreadsheet_id', quizId);
                     if (groupFilter) {
                         localStorage.setItem('student_group_filter', decodeURIComponent(groupFilter));
                     }
+                    
+                    // 모든 교사 관련 화면 숨기기
+                    document.getElementById('login-view').classList.add('hidden');
+                    document.getElementById('teacher-dashboard').classList.add('hidden');
+                    document.getElementById('teacher-dashboard').classList.remove('flex');
+                    
+                    // 학생 로그인 화면 표시
                     showStudentLogin();
+                } else {
+                    // 학생 링크가 없으면 일반 로그인 화면 표시 (교사 모드)
+                    // 단, 이미 로그인된 상태면 교사 대시보드 유지
+                    const existingToken = gapi.client.getToken();
+                    if (!existingToken) {
+                        document.getElementById('login-view').classList.remove('hidden');
+                        document.getElementById('teacher-dashboard').classList.add('hidden');
+                        document.getElementById('student-login-view').classList.add('hidden');
+                        document.getElementById('student-quiz-view').classList.add('hidden');
+                    }
                 }
             }
 
@@ -2849,6 +2938,12 @@ ${feedback}
                 // This requires the sheet to be readable by anyone with the link (or public).
                 // Submitting answers will fail unless the sheet is writable by anyone with the link.
 
+                // 모든 교사 관련 화면 숨기기
+                document.getElementById('login-view').classList.add('hidden');
+                document.getElementById('teacher-dashboard').classList.add('hidden');
+                document.getElementById('teacher-dashboard').classList.remove('flex');
+                
+                // 학생 화면만 표시
                 document.getElementById('student-login-view').classList.add('hidden');
                 document.getElementById('student-quiz-view').classList.remove('hidden');
 
@@ -3032,26 +3127,50 @@ ${feedback}
                             })
                         });
 
+                        // 응답 텍스트 먼저 가져오기
+                        const responseText = await res.text();
+                        
                         // 응답 상태 확인
                         if (!res.ok) {
-                            const errorText = await res.text();
-                            console.error('AI Grading API Error:', res.status, errorText);
-                            throw new Error(`채점 API 오류 (${res.status}): ${errorText.substring(0, 100)}`);
+                            console.error('AI Grading API Error:', res.status, responseText);
+                            
+                            // JSON 형식의 에러 응답인지 확인
+                            let errorData;
+                            try {
+                                errorData = JSON.parse(responseText);
+                                if (errorData.error && errorData.score !== undefined) {
+                                    // 에러 응답이지만 score와 feedback이 포함된 경우
+                                    return {
+                                        score: errorData.score || 0,
+                                        feedback: errorData.feedback || errorData.error || '채점 중 오류가 발생했습니다.',
+                                        isCorrect: false
+                                    };
+                                }
+                            } catch (parseErr) {
+                                // JSON이 아닌 경우
+                            }
+                            
+                            throw new Error(`채점 API 오류 (${res.status}): ${responseText.substring(0, 100)}`);
                         }
 
-                        // Content-Type 확인
-                        const contentType = res.headers.get('content-type');
-                        if (!contentType || !contentType.includes('application/json')) {
-                            const text = await res.text();
-                            console.error('Non-JSON response:', text.substring(0, 200));
-                            throw new Error('채점 서버가 JSON이 아닌 응답을 반환했습니다. 서버 상태를 확인해주세요.');
+                        // JSON 파싱 시도
+                        let data;
+                        try {
+                            data = JSON.parse(responseText);
+                        } catch (parseError) {
+                            console.error('Failed to parse JSON response:', parseError);
+                            console.error('Response text:', responseText.substring(0, 500));
+                            throw new Error('채점 서버 응답을 파싱할 수 없습니다. 서버 상태를 확인해주세요.');
                         }
-
-                        const data = await res.json();
                         
                         // 응답 데이터 유효성 검사
                         if (!data || typeof data !== 'object') {
                             throw new Error('채점 응답 데이터 형식이 올바르지 않습니다.');
+                        }
+                        
+                        // 에러 필드가 있지만 score와 feedback도 있는 경우 처리
+                        if (data.error && data.score === undefined) {
+                            throw new Error(data.error || '채점 중 오류가 발생했습니다.');
                         }
 
                         return {
