@@ -1112,7 +1112,7 @@
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-xl">문항별 폴더</h3>
                         <div class="flex gap-2">
-                            <button onclick="loadDashboardData()" class="btn btn-secondary">새로고침</button>
+                            <button onclick="refreshDashboard()" class="btn btn-secondary">새로고침</button>
                         </div>
                     </div>
                     <div id="folders-container" class="flex flex-wrap gap-6">
@@ -1695,6 +1695,20 @@
 
             function closeFolder() {
                 document.getElementById('folder-detail-view').classList.add('hidden');
+            }
+
+            // 새로고침 함수 (폴더가 열려있으면 닫고 새로고침)
+            async function refreshDashboard() {
+                // 폴더가 열려있는지 확인
+                const folderDetailView = document.getElementById('folder-detail-view');
+                if (folderDetailView && !folderDetailView.classList.contains('hidden')) {
+                    // 폴더가 열려있으면 닫기
+                    closeFolder();
+                    // 약간의 딜레이 후 새로고침 (UI 애니메이션을 위한)
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                }
+                // 데이터 새로고침
+                await loadDashboardData();
             }
 
             // 문제 수정 함수
