@@ -1,18 +1,73 @@
 const { OpenAI } = require("openai");
 
 exports.handler = async (event, context) => {
-  // Only allow POST
-  if (event.httpMethod !== "POST") {
-    return { statusCode: 405, body: "Method Not Allowed" };
+  // CORS 헤더 설정
+  const headers = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS'
+  };
+
+  // OPTIONS 요청 처리 (CORS preflight)
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers,
+      body: ''
+    };
   }
 
-  const { question, studentAnswer, rubric, correctAnswer, type } = JSON.parse(event.body);
-
-  if (!process.env.OPENAI_API_KEY) {
-    return { statusCode: 500, body: "Missing OpenAI API Key" };
+  // Only allow POST
+  if (event.httpMethod !== "POST") {
+    return {
+      statusCode: 405,
+      headers,
+      body: JSON.stringify({ error: "Method Not Allowed" })
+    };
   }
 
   try {
+    // 요청 본문 파싱
+    let body;
+    try {
+      body = JSON.parse(event.body);
+    } catch (parseError) {
+      console.error("Failed to parse request body:", parseError);
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ 
+          error: "잘못된 요청 형식입니다.", 
+          score: 0, 
+          feedback: "요청 데이터를 파싱할 수 없습니다." 
+        })
+      };
+    }
+
+    const { question, studentAnswer, rubric, correctAnswer, type } = body;
+
+    // 필수 필드 검증
+    if (!question || !studentAnswer || !type) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ 
+          error: "필수 필드가 누락되었습니다.", 
+          score: 0, 
+          feedback: "문제, 답안, 유형 정보가 필요합니다." 
+        })
+      };
+    }
+
+    if (!process.env.OPENAI_API_KEY) {
+      return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({ error: "Missing OpenAI API Key", score: 0, feedback: "채점 서버 설정 오류입니다." })
+      };
+    }
+
     const openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
     });
@@ -73,6 +128,7 @@ exports.handler = async (event, context) => {
       // Fallback for logic if needed server-side, though usually frontend handles exact matches
       return {
         statusCode: 200,
+        headers,
         body: JSON.stringify({ message: "Simple types should be graded locally or via strict match." }),
       };
     }
@@ -85,16 +141,67 @@ exports.handler = async (event, context) => {
 
     const result = completion.choices[0].message.content;
 
+    // 결과가 JSON 문자열인지 확인하고 파싱
+    let parsedResult;
+    try {
+      parsedResult = JSON.parse(result);
+    } catch (parseError) {
+      console.error("Failed to parse OpenAI response:", parseError);
+      console.error("Raw response:", result);
+      return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({ 
+          error: "채점 결과 파싱 오류", 
+          score: 0, 
+          feedback: "채점 결과를 처리하는 중 오류가 발생했습니다." 
+        })
+      };
+    }
+
+    // 응답 형식 검증
+    if (typeof parsedResult.score !== 'number' || typeof parsedResult.feedback !== 'string') {
+      console.error("Invalid response format:", parsedResult);
+      return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({ 
+          error: "채점 결과 형식 오류", 
+          score: 0, 
+          feedback: "채점 결과 형식이 올바르지 않습니다." 
+        })
+      };
+    }
+
     return {
       statusCode: 200,
-      body: result,
+      headers,
+      body: JSON.stringify(parsedResult),
     };
 
   } catch (error) {
     console.error("Error:", error);
+    
+    // 에러 타입에 따라 다른 메시지 반환
+    let errorMessage = "채점 중 오류가 발생했습니다.";
+    if (error.message) {
+      if (error.message.includes('API key')) {
+        errorMessage = "OpenAI API 키 오류입니다.";
+      } else if (error.message.includes('rate limit')) {
+        errorMessage = "요청 한도가 초과되었습니다. 잠시 후 다시 시도해주세요.";
+      } else if (error.message.includes('timeout')) {
+        errorMessage = "채점 요청 시간이 초과되었습니다. 다시 시도해주세요.";
+      }
+    }
+    
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: "Failed to grade assignment" }),
+      headers,
+      body: JSON.stringify({ 
+        error: errorMessage,
+        score: 0, 
+        feedback: errorMessage 
+      }),
     };
   }
 };
