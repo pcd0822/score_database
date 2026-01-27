@@ -116,12 +116,18 @@ exports.handler = async (event, context) => {
            - Suggests concrete improvements based on what the student actually wrote
            - Points out strengths in the student's answer if any
         
+        CRITICAL FEEDBACK LENGTH REQUIREMENT:
+        - The feedback must be concise and focused, between 150-250 characters (Korean characters).
+        - Do NOT write lengthy paragraphs or multiple detailed explanations.
+        - Be specific but brief, highlighting the most important points only.
+        - Focus on the key strengths and weaknesses that directly relate to the rubric criteria.
+        
         Your evaluation must be based on the STUDENT'S ACTUAL ANSWER CONTENT, not just comparing to the model answer.
         
         Output JSON format:
         {
           "score": number (must match one of the rubric point levels),
-          "feedback": "string (detailed feedback referencing the student's answer)"
+          "feedback": "string (concise feedback, 150-250 characters, referencing the student's answer)"
         }
       `;
     } else {
@@ -173,10 +179,31 @@ exports.handler = async (event, context) => {
       };
     }
 
+    // 피드백 길이 제한 (250자 초과 시 자동으로 잘라내기)
+    let feedback = parsedResult.feedback;
+    if (feedback.length > 250) {
+      // 문장 단위로 자르기 (마지막 완전한 문장까지만 유지)
+      const truncated = feedback.substring(0, 250);
+      const lastPeriod = truncated.lastIndexOf('.');
+      const lastQuestion = truncated.lastIndexOf('?');
+      const lastExclamation = truncated.lastIndexOf('!');
+      const lastSentenceEnd = Math.max(lastPeriod, lastQuestion, lastExclamation);
+      
+      if (lastSentenceEnd > 200) {
+        feedback = truncated.substring(0, lastSentenceEnd + 1);
+      } else {
+        // 문장 끝을 찾지 못한 경우 그냥 250자로 자르기
+        feedback = truncated + '...';
+      }
+    }
+
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify(parsedResult),
+      body: JSON.stringify({
+        score: parsedResult.score,
+        feedback: feedback
+      }),
     };
 
   } catch (error) {
