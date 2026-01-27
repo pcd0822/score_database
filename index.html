@@ -3415,115 +3415,124 @@ ${feedback}
             const savingScores = new Set(); // 현재 저장 중인 점수 추적
 
             async function autoGradeAndSave(qId, sid, sname, score, feedback, type) {
+                // 중복 저장 방지를 위한 고유 키 생성
+                const saveKey = `${sid}_${qId}`;
+                
+                // 이미 저장 중인 경우 대기
+                if (savingScores.has(saveKey)) {
+                    console.log(`Score save already in progress for ${saveKey}, skipping...`);
+                    return;
+                }
+
+                // 저장 시작 표시
+                savingScores.add(saveKey);
+
                 try {
-                    if (!gapi.client.sheets || !spreadsheetId) {
-                        console.warn("Cannot save score: gapi.client.sheets or spreadsheetId not available");
-                        return;
+                    // 유형을 한글로 변환 (안전장치)
+                    const typeKorean = getQuestionTypeName(type);
+
+                    // gapi가 사용 가능한 경우 (교사 대시보드)
+                    if (gapi.client.sheets && spreadsheetId) {
+                        try {
+                            // 기존 점수가 있는지 확인 (중복 저장 방지)
+                            const scoreRes = await gapi.client.sheets.spreadsheets.values.get({
+                                spreadsheetId: spreadsheetId,
+                                range: 'SCORE!A2:H'
+                            });
+
+                            if (scoreRes.result.values) {
+                                // 이미 해당 학생과 문제의 점수가 있는지 확인 (타입 일치를 위해 String으로 변환)
+                                const existingScore = scoreRes.result.values.find(row => 
+                                    String(row[1]) === String(sid) && String(row[3]) === String(qId)
+                                );
+
+                                if (existingScore) {
+                                    // 기존 점수가 있으면 업데이트 (점수, 피드백, 유형 모두 업데이트)
+                                    const rowIndex = scoreRes.result.values.findIndex(row => 
+                                        String(row[1]) === String(sid) && String(row[3]) === String(qId)
+                                    ) + 2; // +2 because range starts at A2
+
+                                    await gapi.client.sheets.spreadsheets.values.update({
+                                        spreadsheetId: spreadsheetId,
+                                        range: `SCORE!E${rowIndex}:G${rowIndex}`,
+                                        valueInputOption: 'RAW',
+                                        resource: {
+                                            values: [[score, feedback, typeKorean]]
+                                        }
+                                    });
+                                    console.log(`Updated score for ${sid}, Q${qId}: ${score}점`);
+                                    return;
+                                }
+                            }
+
+                            // 새 점수 저장
+                            await checkAndWriteHeader('SCORE', ["Timestamp", "StudentID", "Name", "Q_ID", "Score", "Feedback", "Type", "EmailStatus"]);
+
+                            await gapi.client.sheets.spreadsheets.values.append({
+                                spreadsheetId: spreadsheetId,
+                                range: 'SCORE!A2',
+                                valueInputOption: 'RAW',
+                                resource: {
+                                    values: [[
+                                        new Date().toISOString(),
+                                        sid,
+                                        sname,
+                                        qId,
+                                        score,
+                                        feedback,
+                                        typeKorean, // 한글로 저장
+                                        '' // EmailStatus - 초기값은 빈 문자열
+                                    ]]
+                                }
+                            });
+                            console.log(`Saved new score for ${sid}, Q${qId}: ${score}점`);
+                            return;
+                        } catch (gapiErr) {
+                            console.warn("gapi save failed, falling back to Apps Script:", gapiErr);
+                            // gapi 실패 시 Apps Script로 폴백
+                        }
                     }
 
-                    // 중복 저장 방지를 위한 고유 키 생성
-                    const saveKey = `${sid}_${qId}`;
-                    
-                    // 이미 저장 중인 경우 대기
-                    if (savingScores.has(saveKey)) {
-                        console.log(`Score save already in progress for ${saveKey}, skipping...`);
+                    // Apps Script를 통한 저장 (학생 환경 또는 gapi 실패 시)
+                    if (!spreadsheetId) {
+                        console.error("Cannot save score: spreadsheetId not available");
                         return;
                     }
-
-                    // 저장 시작 표시
-                    savingScores.add(saveKey);
 
                     try {
-                        // 유형을 한글로 변환 (안전장치)
-                        const typeKorean = getQuestionTypeName(type);
-
-                        // 기존 점수가 있는지 확인 (중복 저장 방지) - 저장 직전에 다시 확인
-                        const scoreRes = await gapi.client.sheets.spreadsheets.values.get({
-                            spreadsheetId: spreadsheetId,
-                            range: 'SCORE!A2:H'
+                        const response = await fetch(APPS_CRIPT_URL + '?type=saveScore', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                timestamp: new Date().toISOString(),
+                                sid: sid,
+                                sname: sname,
+                                qId: qId,
+                                score: score,
+                                feedback: feedback,
+                                type: typeKorean,
+                                emailStatus: '',
+                                spreadsheetId: spreadsheetId
+                            })
                         });
 
-                        if (scoreRes.result.values) {
-                            // 이미 해당 학생과 문제의 점수가 있는지 확인 (타입 일치를 위해 String으로 변환)
-                            const existingScore = scoreRes.result.values.find(row => 
-                                String(row[1]) === String(sid) && String(row[3]) === String(qId)
-                            );
-
-                            if (existingScore) {
-                                // 기존 점수가 있으면 업데이트 (점수, 피드백, 유형 모두 업데이트)
-                                const rowIndex = scoreRes.result.values.findIndex(row => 
-                                    String(row[1]) === String(sid) && String(row[3]) === String(qId)
-                                ) + 2; // +2 because range starts at A2
-
-                                await gapi.client.sheets.spreadsheets.values.update({
-                                    spreadsheetId: spreadsheetId,
-                                    range: `SCORE!E${rowIndex}:G${rowIndex}`,
-                                    valueInputOption: 'RAW',
-                                    resource: {
-                                        values: [[score, feedback, typeKorean]]
-                                    }
-                                });
-                                console.log(`Updated score for ${sid}, Q${qId}: ${score}점`);
-                                return;
-                            }
+                        const result = await response.json();
+                        if (result.result === 'success') {
+                            console.log(`Saved score via Apps Script for ${sid}, Q${qId}: ${score}점 (${result.action})`);
+                        } else {
+                            throw new Error(result.error || 'Apps Script save failed');
                         }
-
-                        // 저장 직전에 다시 한번 확인 (동시성 문제 방지)
-                        const finalCheck = await gapi.client.sheets.spreadsheets.values.get({
-                            spreadsheetId: spreadsheetId,
-                            range: 'SCORE!A2:H'
-                        });
-
-                        if (finalCheck.result.values) {
-                            const stillExists = finalCheck.result.values.find(row => 
-                                String(row[1]) === String(sid) && String(row[3]) === String(qId)
-                            );
-                            if (stillExists) {
-                                console.log(`Score already exists for ${saveKey} (final check), updating instead...`);
-                                const rowIndex = finalCheck.result.values.findIndex(row => 
-                                    String(row[1]) === String(sid) && String(row[3]) === String(qId)
-                                ) + 2;
-                                await gapi.client.sheets.spreadsheets.values.update({
-                                    spreadsheetId: spreadsheetId,
-                                    range: `SCORE!E${rowIndex}:G${rowIndex}`,
-                                    valueInputOption: 'RAW',
-                                    resource: {
-                                        values: [[score, feedback, typeKorean]]
-                                    }
-                                });
-                                return;
-                            }
-                        }
-
-                        // 새 점수 저장
-                        await checkAndWriteHeader('SCORE', ["Timestamp", "StudentID", "Name", "Q_ID", "Score", "Feedback", "Type", "EmailStatus"]);
-
-                        await gapi.client.sheets.spreadsheets.values.append({
-                            spreadsheetId: spreadsheetId,
-                            range: 'SCORE!A2',
-                            valueInputOption: 'RAW',
-                            resource: {
-                                values: [[
-                                    new Date().toISOString(),
-                                    sid,
-                                    sname,
-                                    qId,
-                                    score,
-                                    feedback,
-                                    typeKorean, // 한글로 저장
-                                    '' // EmailStatus - 초기값은 빈 문자열
-                                ]]
-                            }
-                        });
-                        console.log(`Saved new score for ${sid}, Q${qId}: ${score}점`);
-                    } finally {
-                        // 저장 완료 후 락 해제
-                        savingScores.delete(saveKey);
+                    } catch (appsScriptErr) {
+                        console.error("Apps Script save error:", appsScriptErr);
+                        throw appsScriptErr;
                     }
                 } catch (err) {
                     console.error("Auto-grade save error", err);
-                    // 에러 발생 시에도 락 해제
-                    const saveKey = `${sid}_${qId}`;
+                    throw err; // 에러를 다시 throw하여 호출자가 알 수 있도록
+                } finally {
+                    // 저장 완료 후 락 해제
                     savingScores.delete(saveKey);
                 }
             }
