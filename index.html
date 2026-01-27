@@ -20,7 +20,7 @@
         let gapiInited = false;
         let gisInited = false;
         let spreadsheetId = localStorage.getItem('grading_spreadsheet_id') || '';
-        const APPS_CRIPT_URL = "https://script.google.com/macros/s/AKfycbzD88VCr-3tuzU2A3G90KNtF1wzoGPnqFHUPSftKu57TLGPy-u-IXVS6vB07eCJypIXAg/exec";
+        const APPS_CRIPT_URL = "https://script.google.com/macros/s/AKfycbzdSZK897wJVGDWcNRLlvA6UUlJ7dHaloQpOh4hLWKscqEnkco67Qh_rpihsx6ak6E2sA/exec";
 
         // State Management
         let currentUser = null;
@@ -839,31 +839,31 @@
                             <div class="space-y-3">
                                 <div class="flex gap-2 items-center">
                                     <input type="number" id="rubric-points-5" placeholder="배점" class="w-20" min="0"
-                                        max="100" value="5">
+                                        max="100">
                                     <input type="text" id="rubric-5" class="flex-1"
                                         placeholder="5점 기준 (탁월): 예) 핵심 키워드 3개 모두 포함...">
                                 </div>
                                 <div class="flex gap-2 items-center">
                                     <input type="number" id="rubric-points-4" placeholder="배점" class="w-20" min="0"
-                                        max="100" value="4">
+                                        max="100">
                                     <input type="text" id="rubric-4" class="flex-1"
                                         placeholder="4점 기준 (우수): 예) 핵심 키워드 2개 포함...">
                                 </div>
                                 <div class="flex gap-2 items-center">
                                     <input type="number" id="rubric-points-3" placeholder="배점" class="w-20" min="0"
-                                        max="100" value="3">
+                                        max="100">
                                     <input type="text" id="rubric-3" class="flex-1"
                                         placeholder="3점 기준 (보통): 예) 핵심 키워드 1개 포함...">
                                 </div>
                                 <div class="flex gap-2 items-center">
                                     <input type="number" id="rubric-points-2" placeholder="배점" class="w-20" min="0"
-                                        max="100" value="2">
+                                        max="100">
                                     <input type="text" id="rubric-2" class="flex-1"
                                         placeholder="2점 기준 (미흡): 예) 관련 내용이나 키워드 누락...">
                                 </div>
                                 <div class="flex gap-2 items-center">
                                     <input type="number" id="rubric-points-1" placeholder="배점" class="w-20" min="0"
-                                        max="100" value="1">
+                                        max="100">
                                     <input type="text" id="rubric-1" class="flex-1"
                                         placeholder="1점 기준 (부족): 예) 내용 불일치...">
                                 </div>
@@ -1423,15 +1423,21 @@
                     const qDiv = document.createElement('div');
                     qDiv.className = 'p-4 border border-white/10 rounded bg-white/5 mb-6';
                     qDiv.innerHTML = `
-                    <div class="flex justify-between items-center cursor-pointer" onclick="toggleAnswers('${q.id}')">
-                        <div>
+                    <div class="flex justify-between items-center">
+                        <div class="flex-1 cursor-pointer" onclick="toggleAnswers('${q.id}')">
                             <h5 class="font-bold text-lg">Q. ${q.content} (${q.points}점)</h5>
                             <span class="text-xs text-gray ml-2">유형: ${q.type}</span>
                         </div>
-                        <div class="text-sm">
-                            <span class="mr-2">응답: ${qAnswers.length}</span>
-                            <span class="text-success">완료: ${gradedCount}</span>
-                            <span class="text-xs ml-2">▼</span>
+                        <div class="flex items-center gap-2">
+                            <div class="text-sm mr-4">
+                                <span class="mr-2">응답: ${qAnswers.length}</span>
+                                <span class="text-success">완료: ${gradedCount}</span>
+                            </div>
+                            <button onclick="event.stopPropagation(); editQuestion('${q.id}')" 
+                                    class="btn btn-secondary text-xs px-3 py-1">✏️ 수정</button>
+                            <button onclick="event.stopPropagation(); deleteQuestion('${q.id}', '${q.content.replace(/'/g, "\\'")}')" 
+                                    class="btn btn-danger text-xs px-3 py-1">🗑️ 삭제</button>
+                            <span class="text-xs ml-2 cursor-pointer" onclick="toggleAnswers('${q.id}')">▼</span>
                         </div>
                     </div>
                     <div id="answers-${q.id}" class="hidden mt-4 border-t border-white/10 pt-4 space-y-2">
@@ -1497,6 +1503,270 @@
 
             function closeFolder() {
                 document.getElementById('folder-detail-view').classList.add('hidden');
+            }
+
+            // 문제 수정 함수
+            async function editQuestion(questionId) {
+                const question = allQuestions.find(q => q.id == questionId);
+                if (!question) {
+                    alert("문제를 찾을 수 없습니다.");
+                    return;
+                }
+
+                // 문제 수정 모달 표시
+                const modal = document.createElement('div');
+                modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-50';
+                modal.id = 'edit-question-modal';
+                
+                // 문제 데이터를 폼에 채우기
+                let optionsHtml = '';
+                if (question.type === 'choice' && question.options) {
+                    const options = typeof question.options === 'string' ? JSON.parse(question.options || '[]') : question.options;
+                    options.forEach((opt, idx) => {
+                        optionsHtml += `
+                            <div class="flex gap-2 mb-2">
+                                <input type="text" class="flex-1" value="${opt.replace(/"/g, '&quot;')}" id="edit-option-${idx}">
+                                <button onclick="removeEditOption(${idx})" class="btn btn-danger text-xs">삭제</button>
+                            </div>
+                        `;
+                    });
+                }
+
+                let rubricHtml = '';
+                if (question.type === 'essay' && question.rubric) {
+                    const rubric = typeof question.rubric === 'string' ? JSON.parse(question.rubric || '{}') : question.rubric;
+                    for (let i = 5; i >= 1; i--) {
+                        const rubricItem = rubric[i] || {};
+                        rubricHtml += `
+                            <div class="flex gap-2 items-center">
+                                <input type="number" id="edit-rubric-points-${i}" placeholder="배점" class="w-20" min="0" max="100" value="${rubricItem.points || ''}">
+                                <input type="text" id="edit-rubric-${i}" class="flex-1" value="${(rubricItem.criteria || '').replace(/"/g, '&quot;')}" placeholder="${i}점 기준">
+                            </div>
+                        `;
+                    }
+                }
+
+                modal.innerHTML = `
+                    <div class="bg-gray-900 p-8 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                        <h3 class="text-2xl font-bold mb-6">문제 수정</h3>
+                        <div class="space-y-4">
+                            <div class="input-group">
+                                <label>폴더명</label>
+                                <input type="text" id="edit-question-group" value="${(question.group || '').replace(/"/g, '&quot;')}" placeholder="폴더명">
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="input-group">
+                                    <label>유형</label>
+                                    <select id="edit-question-type" onchange="toggleEditQuestionInputs()">
+                                        <option value="choice" ${question.type === 'choice' ? 'selected' : ''}>선택형</option>
+                                        <option value="short" ${question.type === 'short' ? 'selected' : ''}>단답형</option>
+                                        <option value="essay" ${question.type === 'essay' ? 'selected' : ''}>서논술형</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <label>배점</label>
+                                    <input type="number" id="edit-question-points" value="${question.points || ''}" placeholder="예: 5">
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <label>문제 내용</label>
+                                <textarea id="edit-question-content" rows="3" placeholder="문제를 입력하세요">${(question.content || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+                            </div>
+                            <div id="edit-options-container" class="input-group ${question.type === 'choice' ? '' : 'hidden'}">
+                                <label>선택지</label>
+                                <div id="edit-options-list" class="space-y-2 mb-2">
+                                    ${optionsHtml}
+                                </div>
+                                <button onclick="addEditOption()" class="btn btn-secondary text-sm w-full">+ 선택지 추가</button>
+                            </div>
+                            <div class="input-group">
+                                <label>정답</label>
+                                <input type="text" id="edit-question-answer" value="${(question.answer || '').replace(/"/g, '&quot;')}" placeholder="정답 입력">
+                            </div>
+                            <div id="edit-rubric-container" class="input-group ${question.type === 'essay' ? '' : 'hidden'}">
+                                <label class="text-accent mb-2 block">AI 채점 기준 (5단계 척도)</label>
+                                <div class="space-y-3">
+                                    ${rubricHtml}
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <label>해설</label>
+                                <textarea id="edit-question-explanation" rows="2" placeholder="해설을 입력하세요">${(question.explanation || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+                            </div>
+                        </div>
+                        <div class="flex gap-4 mt-6">
+                            <button onclick="saveEditedQuestion('${questionId}')" class="btn btn-primary flex-1">저장</button>
+                            <button onclick="closeEditModal()" class="btn btn-secondary flex-1">취소</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+                
+                // 전역 변수에 편집 중인 옵션 저장
+                window.editOptions = question.type === 'choice' && question.options 
+                    ? (typeof question.options === 'string' ? JSON.parse(question.options || '[]') : question.options)
+                    : [];
+            }
+
+            function toggleEditQuestionInputs() {
+                const type = document.getElementById('edit-question-type').value;
+                const optionsContainer = document.getElementById('edit-options-container');
+                const rubricContainer = document.getElementById('edit-rubric-container');
+                
+                if (type === 'choice') {
+                    optionsContainer.classList.remove('hidden');
+                    rubricContainer.classList.add('hidden');
+                } else if (type === 'essay') {
+                    optionsContainer.classList.add('hidden');
+                    rubricContainer.classList.remove('hidden');
+                } else {
+                    optionsContainer.classList.add('hidden');
+                    rubricContainer.classList.add('hidden');
+                }
+            }
+
+            function addEditOption() {
+                const container = document.getElementById('edit-options-list');
+                const index = container.children.length;
+                const div = document.createElement('div');
+                div.className = 'flex gap-2 mb-2';
+                div.innerHTML = `
+                    <input type="text" class="flex-1" id="edit-option-${index}" placeholder="선택지 입력">
+                    <button onclick="removeEditOption(${index})" class="btn btn-danger text-xs">삭제</button>
+                `;
+                container.appendChild(div);
+            }
+
+            function removeEditOption(index) {
+                const input = document.getElementById(`edit-option-${index}`);
+                if (input) {
+                    input.parentElement.remove();
+                }
+            }
+
+            async function saveEditedQuestion(questionId) {
+                const group = document.getElementById('edit-question-group').value || '기본 그룹';
+                const type = document.getElementById('edit-question-type').value;
+                const points = parseFloat(document.getElementById('edit-question-points').value);
+                const content = document.getElementById('edit-question-content').value;
+                const answer = document.getElementById('edit-question-answer').value;
+                const explanation = document.getElementById('edit-question-explanation').value;
+
+                if (!content || !points || !answer) {
+                    alert("문제 내용, 배점, 정답은 필수입니다.");
+                    return;
+                }
+
+                // 선택지 수집
+                let options = "";
+                if (type === 'choice') {
+                    const optionInputs = document.querySelectorAll('#edit-options-list input[type="text"]');
+                    const optionValues = Array.from(optionInputs).map(input => input.value).filter(v => v.trim());
+                    if (optionValues.length === 0) {
+                        alert("선택형 문제는 최소 1개 이상의 선택지가 필요합니다.");
+                        return;
+                    }
+                    options = JSON.stringify(optionValues);
+                }
+
+                // 채점 기준 수집
+                let rubric = "";
+                if (type === 'essay') {
+                    const r5 = document.getElementById('edit-rubric-5').value;
+                    const r4 = document.getElementById('edit-rubric-4').value;
+                    const r3 = document.getElementById('edit-rubric-3').value;
+                    const r2 = document.getElementById('edit-rubric-2').value;
+                    const r1 = document.getElementById('edit-rubric-1').value;
+                    const p5 = document.getElementById('edit-rubric-points-5').value || '';
+                    const p4 = document.getElementById('edit-rubric-points-4').value || '';
+                    const p3 = document.getElementById('edit-rubric-points-3').value || '';
+                    const p2 = document.getElementById('edit-rubric-points-2').value || '';
+                    const p1 = document.getElementById('edit-rubric-points-1').value || '';
+                    
+                    if (!p5 || !p4 || !p3 || !p2 || !p1) {
+                        alert("서술형 채점 기준의 모든 배점을 입력해주세요.");
+                        return;
+                    }
+                    
+                    rubric = JSON.stringify({
+                        5: { points: p5, criteria: r5 },
+                        4: { points: p4, criteria: r4 },
+                        3: { points: p3, criteria: r3 },
+                        2: { points: p2, criteria: r2 },
+                        1: { points: p1, criteria: r1 }
+                    });
+                }
+
+                try {
+                    const response = await fetch(APPS_CRIPT_URL + '?type=updateQuiz', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            id: questionId,
+                            group,
+                            type,
+                            points,
+                            content,
+                            answer,
+                            options,
+                            rubric,
+                            explanation
+                        })
+                    });
+
+                    const result = await response.json();
+                    
+                    if (result.result === 'success') {
+                        alert("문제가 수정되었습니다.");
+                        closeEditModal();
+                        await loadDashboardData();
+                    } else {
+                        throw new Error(result.error || '알 수 없는 오류');
+                    }
+                } catch (err) {
+                    console.error("Error updating question", err);
+                    alert("문제 수정 중 오류 발생: " + err.message);
+                }
+            }
+
+            function closeEditModal() {
+                const modal = document.getElementById('edit-question-modal');
+                if (modal) {
+                    modal.remove();
+                }
+            }
+
+            // 문제 삭제 함수
+            async function deleteQuestion(questionId, questionContent) {
+                if (!confirm(`다음 문제를 삭제하시겠습니까?\n\n${questionContent.substring(0, 50)}${questionContent.length > 50 ? '...' : ''}\n\n이 작업은 되돌릴 수 없습니다.`)) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch(APPS_CRIPT_URL + '?type=deleteQuiz', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            id: questionId
+                        })
+                    });
+
+                    const result = await response.json();
+                    
+                    if (result.result === 'success') {
+                        alert("문제가 삭제되었습니다.");
+                        await loadDashboardData();
+                    } else {
+                        throw new Error(result.error || '알 수 없는 오류');
+                    }
+                } catch (err) {
+                    console.error("Error deleting question", err);
+                    alert("문제 삭제 중 오류 발생: " + err.message);
+                }
             }
 
             // ... grading logic ...
@@ -1891,11 +2161,17 @@ ${feedback}
                     const r3 = document.getElementById('rubric-3').value;
                     const r2 = document.getElementById('rubric-2').value;
                     const r1 = document.getElementById('rubric-1').value;
-                    const p5 = document.getElementById('rubric-points-5').value || 5;
-                    const p4 = document.getElementById('rubric-points-4').value || 4;
-                    const p3 = document.getElementById('rubric-points-3').value || 3;
-                    const p2 = document.getElementById('rubric-points-2').value || 2;
-                    const p1 = document.getElementById('rubric-points-1').value || 1;
+                    const p5 = document.getElementById('rubric-points-5').value || '';
+                    const p4 = document.getElementById('rubric-points-4').value || '';
+                    const p3 = document.getElementById('rubric-points-3').value || '';
+                    const p2 = document.getElementById('rubric-points-2').value || '';
+                    const p1 = document.getElementById('rubric-points-1').value || '';
+                    
+                    // 점수가 입력되지 않은 경우 경고
+                    if (!p5 || !p4 || !p3 || !p2 || !p1) {
+                        alert("서술형 채점 기준의 모든 배점을 입력해주세요.");
+                        return;
+                    }
                     rubric = JSON.stringify({
                         5: { points: p5, criteria: r5 },
                         4: { points: p4, criteria: r4 },
@@ -1938,7 +2214,7 @@ ${feedback}
                     for (let i = 1; i <= 5; i++) {
                         document.getElementById(`rubric-${i}`).value = '';
                         const pointsInput = document.getElementById(`rubric-points-${i}`);
-                        if (pointsInput) pointsInput.value = i;
+                        if (pointsInput) pointsInput.value = '';
                     }
                 }
                 document.getElementById('question-explanation').value = '';
