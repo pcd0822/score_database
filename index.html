@@ -20,7 +20,7 @@
         let gapiInited = false;
         let gisInited = false;
         let spreadsheetId = localStorage.getItem('grading_spreadsheet_id') || '';
-        const APPS_CRIPT_URL = "https://script.google.com/macros/s/AKfycbzdSZK897wJVGDWcNRLlvA6UUlJ7dHaloQpOh4hLWKscqEnkco67Qh_rpihsx6ak6E2sA/exec";
+        const APPS_CRIPT_URL = "https://script.google.com/macros/s/AKfycby-qU6wxj2b2dESxdywLeETuQO_k77jODYWZgAvpNwk1MsblTcI5E5bOkoNqGK6UJpQHA/exec";
 
         // State Management
         let currentUser = null;
@@ -1231,7 +1231,7 @@
                     // Load Questions - 앱스크립트를 통해 조회 (배포된 스프레드시트와 동기화)
                     let questionRows = [];
                     try {
-                        const res = await fetch(APPS_CRIPT_URL + '?type=quiz');
+                        const res = await fetch(APPS_CRIPT_URL + '?type=quiz&spreadsheetId=' + encodeURIComponent(spreadsheetId));
                         const json = await res.json();
 
                         // Handle different possible return formats
@@ -1712,7 +1712,8 @@
                             answer,
                             options,
                             rubric,
-                            explanation
+                            explanation,
+                            spreadsheetId: spreadsheetId
                         })
                     });
 
@@ -1751,7 +1752,8 @@
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                            id: questionId
+                            id: questionId,
+                            spreadsheetId: spreadsheetId
                         })
                     });
 
@@ -2272,7 +2274,8 @@ ${feedback}
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                            questions: questions
+                            questions: questions,
+                            spreadsheetId: spreadsheetId
                         })
                     });
 
@@ -2402,7 +2405,7 @@ ${feedback}
 
                     // 1. Try fetching from App Script (Works for Private Sheets if Script is 'Execute as Me')
                     try {
-                        const res = await fetch(APPS_CRIPT_URL + '?type=quiz');
+                        const res = await fetch(APPS_CRIPT_URL + '?type=quiz&spreadsheetId=' + encodeURIComponent(spreadsheetId));
                         const json = await res.json();
 
                         // Handle different possible return formats
