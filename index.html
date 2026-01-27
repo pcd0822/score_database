@@ -50,10 +50,79 @@
             maybeEnableButtons();
         }
 
-        function maybeEnableButtons() {
+        async function maybeEnableButtons() {
             if (gapiInited && gisInited) {
                 console.log("Google API Initialized");
+                
+                // 로그인 상태 복원 시도
+                await restoreLoginState();
             }
+        }
+
+        async function restoreLoginState() {
+            try {
+                // 저장된 토큰 확인
+                const savedToken = localStorage.getItem('google_access_token');
+                const savedUser = localStorage.getItem('google_user');
+                
+                if (savedToken && savedUser) {
+                    try {
+                        // 토큰이 유효한지 확인
+                        gapi.client.setToken({ access_token: savedToken });
+                        
+                        // 토큰 유효성 검증 (간단한 API 호출)
+                        await gapi.client.load('oauth2', 'v2');
+                        const userInfo = await gapi.client.oauth2.userinfo.get();
+                        
+                        // 유효한 토큰이면 로그인 상태 복원
+                        if (userInfo && userInfo.result) {
+                            currentUser = JSON.parse(savedUser);
+                            console.log("Login state restored for:", currentUser.email);
+                            
+                            // 스프레드시트 설정 및 대시보드 표시
+                            await setupSpreadsheet();
+                            showTeacherDashboard();
+                            return true;
+                        }
+                    } catch (tokenError) {
+                        console.log("Saved token is invalid, clearing storage");
+                        // 토큰이 유효하지 않으면 저장된 정보 삭제
+                        localStorage.removeItem('google_access_token');
+                        localStorage.removeItem('google_user');
+                    }
+                }
+                
+                // 기존 토큰 확인 (gapi.client.getToken)
+                const existingToken = gapi.client.getToken();
+                if (existingToken) {
+                    try {
+                        await gapi.client.load('oauth2', 'v2');
+                        const userInfo = await gapi.client.oauth2.userinfo.get();
+                        
+                        if (userInfo && userInfo.result) {
+                            currentUser = {
+                                email: userInfo.result.email,
+                                name: userInfo.result.name,
+                                picture: userInfo.result.picture,
+                                role: 'teacher'
+                            };
+                            
+                            // 토큰 저장
+                            localStorage.setItem('google_access_token', existingToken.access_token);
+                            localStorage.setItem('google_user', JSON.stringify(currentUser));
+                            
+                            await setupSpreadsheet();
+                            showTeacherDashboard();
+                            return true;
+                        }
+                    } catch (error) {
+                        console.log("Existing token validation failed:", error);
+                    }
+                }
+            } catch (error) {
+                console.error("Error restoring login state:", error);
+            }
+            return false;
         }
 
         function handleCredentialResponse(response) {
@@ -93,6 +162,30 @@
                     throw (resp);
                 }
                 console.log("Access Token Received");
+                
+                // 토큰 저장
+                const token = gapi.client.getToken();
+                if (token && token.access_token) {
+                    localStorage.setItem('google_access_token', token.access_token);
+                    
+                    // 사용자 정보 가져오기 및 저장
+                    try {
+                        await gapi.client.load('oauth2', 'v2');
+                        const userInfo = await gapi.client.oauth2.userinfo.get();
+                        if (userInfo && userInfo.result) {
+                            currentUser = {
+                                email: userInfo.result.email,
+                                name: userInfo.result.name,
+                                picture: userInfo.result.picture,
+                                role: 'teacher'
+                            };
+                            localStorage.setItem('google_user', JSON.stringify(currentUser));
+                        }
+                    } catch (userError) {
+                        console.error("Error getting user info:", userError);
+                    }
+                }
+                
                 try {
                     await setupSpreadsheet();
                     showTeacherDashboard();
@@ -172,14 +265,15 @@
             position: fixed;
             top: 0;
             right: -100%;
-            width: 600px;
-            max-width: 90vw;
+            width: 900px;
+            max-width: 95vw;
             height: 100vh;
             background: var(--bg-card);
             box-shadow: -4px 0 20px rgba(0, 0, 0, 0.5);
             z-index: 1000;
             transition: right 0.3s ease-in-out;
             overflow-y: auto;
+            overflow-x: auto;
             padding: 2rem;
         }
 
@@ -208,6 +302,7 @@
         /* 학생 응답 테이블 스타일 */
         .answers-table {
             width: 100%;
+            min-width: 800px;
             border-collapse: collapse;
             margin-top: 1rem;
         }
@@ -225,14 +320,35 @@
             color: var(--primary);
         }
 
+        .answers-table th button {
+            background: none;
+            border: none;
+            color: var(--primary);
+            font-weight: bold;
+            padding: 0;
+            width: 100%;
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .answers-table th button:hover {
+            color: var(--accent);
+        }
+
         .answers-table tr:hover {
             background: rgba(255, 255, 255, 0.05);
         }
 
         .answer-cell {
-            max-width: 300px;
+            max-width: 400px;
             word-wrap: break-word;
             white-space: pre-wrap;
+        }
+
+        @media (max-width: 1024px) {
+            .slide-panel {
+                width: 95vw;
+            }
         }
 
         .flex {
@@ -1201,13 +1317,29 @@
                                         type: 'essay'
                                     })
                                 });
+
+                                // 응답 상태 확인
+                                if (!res.ok) {
+                                    const errorText = await res.text();
+                                    console.error('AI Grading API Error:', res.status, errorText);
+                                    throw new Error(`채점 API 오류 (${res.status})`);
+                                }
+
+                                // Content-Type 확인
+                                const contentType = res.headers.get('content-type');
+                                if (!contentType || !contentType.includes('application/json')) {
+                                    const text = await res.text();
+                                    console.error('Non-JSON response:', text.substring(0, 200));
+                                    throw new Error('채점 서버 응답 오류');
+                                }
+
                                 const data = await res.json();
-                                score = data.score || 0;
-                                feedback = data.feedback || '';
+                                score = typeof data.score === 'number' ? data.score : 0;
+                                feedback = typeof data.feedback === 'string' ? data.feedback : '채점 결과를 가져올 수 없습니다.';
                             } catch (e) {
                                 console.error('AI Grading Error', e);
                                 score = 0;
-                                feedback = "AI 채점 실패: " + e.message;
+                                feedback = "AI 채점 실패: " + (e.message || '알 수 없는 오류');
                             }
                         } else if (q.type === 'choice') {
                             // 선택형 채점 - 번호, 내용, 선택지 인덱스 모두 지원
@@ -1788,7 +1920,7 @@
             }
 
             // 학생 응답 테이블 표시 함수
-            function showAnswersTable(questionId) {
+            function showAnswersTable(questionId, sortBy = null, sortOrder = 'asc') {
                 const question = allQuestions.find(q => String(q.id) === String(questionId));
                 if (!question) {
                     alert("문제를 찾을 수 없습니다.");
@@ -1796,7 +1928,36 @@
                 }
 
                 // qId 타입 일치를 위해 String으로 변환하여 비교
-                const qAnswers = allAnswers.filter(a => String(a.qId) === String(questionId));
+                let qAnswers = allAnswers.filter(a => String(a.qId) === String(questionId));
+                
+                // 정렬 적용
+                if (sortBy === 'name') {
+                    qAnswers.sort((a, b) => {
+                        const nameA = (a.name || '').toLowerCase();
+                        const nameB = (b.name || '').toLowerCase();
+                        if (sortOrder === 'asc') {
+                            return nameA.localeCompare(nameB);
+                        } else {
+                            return nameB.localeCompare(nameA);
+                        }
+                    });
+                } else if (sortBy === 'sid') {
+                    qAnswers.sort((a, b) => {
+                        const sidA = (a.sid || '').toString();
+                        const sidB = (b.sid || '').toString();
+                        if (sortOrder === 'asc') {
+                            return sidA.localeCompare(sidB, undefined, { numeric: true, sensitivity: 'base' });
+                        } else {
+                            return sidB.localeCompare(sidA, undefined, { numeric: true, sensitivity: 'base' });
+                        }
+                    });
+                }
+                
+                // 정렬 상태 저장 (다음 정렬을 위해)
+                if (!window.answersTableSortState) {
+                    window.answersTableSortState = {};
+                }
+                window.answersTableSortState[questionId] = { sortBy, sortOrder };
                 
                 // 기존 패널이 있으면 제거
                 const existingPanel = document.getElementById('answers-table-panel');
@@ -1818,10 +1979,18 @@
                 panel.className = 'slide-panel';
                 panel.id = 'answers-table-panel';
 
+                // 정렬 아이콘 생성 함수
+                const getSortIcon = (column) => {
+                    if (sortBy === column) {
+                        return sortOrder === 'asc' ? ' ↑' : ' ↓';
+                    }
+                    return ' ⇅';
+                };
+
                 // 테이블 헤더 생성
                 let tableRows = '';
                 if (qAnswers.length === 0) {
-                    tableRows = '<tr><td colspan="5" class="text-center text-gray py-8">제출된 답안이 없습니다.</td></tr>';
+                    tableRows = '<tr><td colspan="6" class="text-center text-gray py-8">제출된 답안이 없습니다.</td></tr>';
                 } else {
                     qAnswers.forEach((a, index) => {
                         const scoreData = allScores.find(s => s.sid === a.sid && String(s.qId) === String(questionId));
@@ -1849,6 +2018,14 @@
                     });
                 }
 
+                // 다음 정렬 순서 결정
+                const getNextSortOrder = (column) => {
+                    if (sortBy === column) {
+                        return sortOrder === 'asc' ? 'desc' : 'asc';
+                    }
+                    return 'asc';
+                };
+
                 panel.innerHTML = `
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-2xl font-bold">학생 응답 목록</h3>
@@ -1862,8 +2039,18 @@
                         <thead>
                             <tr>
                                 <th>번호</th>
-                                <th>이름</th>
-                                <th>학번</th>
+                                <th>
+                                    <button onclick="showAnswersTable('${questionId}', 'name', '${getNextSortOrder('name')}')" 
+                                            class="text-left hover:text-primary transition cursor-pointer flex items-center gap-1">
+                                        이름${getSortIcon('name')}
+                                    </button>
+                                </th>
+                                <th>
+                                    <button onclick="showAnswersTable('${questionId}', 'sid', '${getNextSortOrder('sid')}')" 
+                                            class="text-left hover:text-primary transition cursor-pointer flex items-center gap-1">
+                                        학번${getSortIcon('sid')}
+                                    </button>
+                                </th>
                                 <th>답안</th>
                                 <th>점수</th>
                                 <th>작업</th>
@@ -1982,10 +2169,17 @@
 
                 await saveFeedbackAndSend(sid, qId, email, name, questionContent, currentScore, timestamp, feedback);
                 closeAnswerDetail();
-                // 응답 테이블 새로고침
+                // 응답 테이블 새로고침 (정렬 상태 유지)
                 const questionId = qId;
+                const sortState = window.answersTableSortState && window.answersTableSortState[questionId];
                 closeAnswersTable();
-                setTimeout(() => showAnswersTable(questionId), 350);
+                setTimeout(() => {
+                    if (sortState) {
+                        showAnswersTable(questionId, sortState.sortBy, sortState.sortOrder);
+                    } else {
+                        showAnswersTable(questionId);
+                    }
+                }, 350);
             }
 
             // 문제 삭제 함수
@@ -2047,6 +2241,9 @@
                         try {
                             const res = await fetch('/.netlify/functions/grade', {
                                 method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
                                 body: JSON.stringify({
                                     question: q.content,
                                     studentAnswer: a.answer,
@@ -2055,13 +2252,29 @@
                                     type: 'essay'
                                 })
                             });
+
+                            // 응답 상태 확인
+                            if (!res.ok) {
+                                const errorText = await res.text();
+                                console.error('AI Grading API Error:', res.status, errorText);
+                                throw new Error(`채점 API 오류 (${res.status})`);
+                            }
+
+                            // Content-Type 확인
+                            const contentType = res.headers.get('content-type');
+                            if (!contentType || !contentType.includes('application/json')) {
+                                const text = await res.text();
+                                console.error('Non-JSON response:', text.substring(0, 200));
+                                throw new Error('채점 서버 응답 오류');
+                            }
+
                             const data = await res.json();
-                            score = data.score;
-                            feedback = data.feedback;
+                            score = typeof data.score === 'number' ? data.score : 0;
+                            feedback = typeof data.feedback === 'string' ? data.feedback : '채점 결과를 가져올 수 없습니다.';
                         } catch (e) {
                             console.error('AI Grading Error', e);
                             score = 0;
-                            feedback = "AI 채점 실패: " + e.message;
+                            feedback = "AI 채점 실패: " + (e.message || '알 수 없는 오류');
                         }
                     } else if (q.type === 'choice') {
                         // 선택형 채점 - 번호, 내용, 선택지 인덱스 모두 지원
@@ -2818,17 +3031,39 @@ ${feedback}
                                 type: 'essay'
                             })
                         });
+
+                        // 응답 상태 확인
+                        if (!res.ok) {
+                            const errorText = await res.text();
+                            console.error('AI Grading API Error:', res.status, errorText);
+                            throw new Error(`채점 API 오류 (${res.status}): ${errorText.substring(0, 100)}`);
+                        }
+
+                        // Content-Type 확인
+                        const contentType = res.headers.get('content-type');
+                        if (!contentType || !contentType.includes('application/json')) {
+                            const text = await res.text();
+                            console.error('Non-JSON response:', text.substring(0, 200));
+                            throw new Error('채점 서버가 JSON이 아닌 응답을 반환했습니다. 서버 상태를 확인해주세요.');
+                        }
+
                         const data = await res.json();
+                        
+                        // 응답 데이터 유효성 검사
+                        if (!data || typeof data !== 'object') {
+                            throw new Error('채점 응답 데이터 형식이 올바르지 않습니다.');
+                        }
+
                         return {
-                            score: data.score || 0,
-                            feedback: data.feedback || '',
-                            isCorrect: data.score >= question.points * 0.8
+                            score: typeof data.score === 'number' ? data.score : 0,
+                            feedback: typeof data.feedback === 'string' ? data.feedback : '채점 결과를 가져올 수 없습니다.',
+                            isCorrect: (typeof data.score === 'number' ? data.score : 0) >= question.points * 0.8
                         };
                     } catch (e) {
                         console.error('AI Grading Error', e);
                         return {
                             score: 0,
-                            feedback: "AI 채점 실패: " + e.message,
+                            feedback: "AI 채점 실패: " + (e.message || '알 수 없는 오류'),
                             isCorrect: false
                         };
                     }
@@ -2967,10 +3202,9 @@ ${feedback}
                         const gradingResult = await gradeAnswer(question, a.answer);
                         showGradingResult(a.qId, question, a.answer, gradingResult.score, gradingResult.feedback, gradingResult.isCorrect);
 
-                        // Auto-grade essay questions and save to SCORE sheet
-                        if (question.type === 'essay' && gradingResult.score > 0) {
-                            await autoGradeAndSave(a.qId, sid, sname, gradingResult.score, gradingResult.feedback, question.type);
-                        }
+                        // Save all grading results to SCORE sheet (including 0 scores)
+                        // This ensures the displayed score matches the saved score
+                        await autoGradeAndSave(a.qId, sid, sname, gradingResult.score, gradingResult.feedback, question.type);
                     }
 
                     btn.innerText = originalText;
@@ -2988,8 +3222,43 @@ ${feedback}
 
             async function autoGradeAndSave(qId, sid, sname, score, feedback, type) {
                 try {
-                    if (!gapi.client.sheets || !spreadsheetId) return;
+                    if (!gapi.client.sheets || !spreadsheetId) {
+                        console.warn("Cannot save score: gapi.client.sheets or spreadsheetId not available");
+                        return;
+                    }
 
+                    // 기존 점수가 있는지 확인 (중복 저장 방지)
+                    const scoreRes = await gapi.client.sheets.spreadsheets.values.get({
+                        spreadsheetId: spreadsheetId,
+                        range: 'SCORE!A2:H'
+                    });
+
+                    if (scoreRes.result.values) {
+                        // 이미 해당 학생과 문제의 점수가 있는지 확인
+                        const existingScore = scoreRes.result.values.find(row => 
+                            String(row[1]) === String(sid) && String(row[3]) === String(qId)
+                        );
+
+                        if (existingScore) {
+                            // 기존 점수가 있으면 업데이트
+                            const rowIndex = scoreRes.result.values.findIndex(row => 
+                                String(row[1]) === String(sid) && String(row[3]) === String(qId)
+                            ) + 2; // +2 because range starts at A2
+
+                            await gapi.client.sheets.spreadsheets.values.update({
+                                spreadsheetId: spreadsheetId,
+                                range: `SCORE!E${rowIndex}:F${rowIndex}`,
+                                valueInputOption: 'RAW',
+                                resource: {
+                                    values: [[score, feedback]]
+                                }
+                            });
+                            console.log(`Updated score for ${sid}, Q${qId}: ${score}점`);
+                            return;
+                        }
+                    }
+
+                    // 새 점수 저장
                     await checkAndWriteHeader('SCORE', ["Timestamp", "StudentID", "Name", "Q_ID", "Score", "Feedback", "Type", "EmailStatus"]);
 
                     await gapi.client.sheets.spreadsheets.values.append({
@@ -3009,6 +3278,7 @@ ${feedback}
                             ]]
                         }
                     });
+                    console.log(`Saved new score for ${sid}, Q${qId}: ${score}점`);
                 } catch (err) {
                     console.error("Auto-grade save error", err);
                 }
