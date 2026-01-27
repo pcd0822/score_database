@@ -1290,12 +1290,12 @@
                     });
 
                     const existingScores = sRes.result.values ? sRes.result.values.map(r => ({
-                        sid: r[1], qId: r[3]
+                        sid: String(r[1]), qId: String(r[3])
                     })) : [];
 
-                    // Find ungraded answers
+                    // Find ungraded answers (타입 일치를 위해 String으로 변환)
                     const ungradedAnswers = newAnswers.filter(a =>
-                        !existingScores.find(s => s.sid === a.sid && s.qId === a.qId)
+                        !existingScores.find(s => s.sid === String(a.sid) && s.qId === String(a.qId))
                     );
 
                     if (ungradedAnswers.length === 0) return;
@@ -1311,7 +1311,7 @@
                     const questions = qRes.result.values.map(r => ({
                         id: r[0],
                         group: r[1],
-                        type: r[2],
+                        type: getQuestionTypeEnglish(r[2] || ''), // 한글/영어 모두 처리하여 영어로 정규화 (내부 처리용)
                         points: r[3],
                         content: r[4],
                         answer: r[5],
@@ -1325,8 +1325,18 @@
                     const timestamp = new Date().toISOString();
 
                     for (const a of ungradedAnswers) {
-                        const q = questions.find(q => q.id == a.qId);
+                        // 타입 일치를 위해 String으로 변환하여 비교
+                        const q = questions.find(q => String(q.id) === String(a.qId));
                         if (!q) continue;
+                        
+                        // 중복 체크 (이미 저장된 점수가 있는지 다시 확인)
+                        const alreadyGraded = existingScores.find(s => 
+                            s.sid === String(a.sid) && s.qId === String(a.qId)
+                        );
+                        if (alreadyGraded) {
+                            console.log(`Score already exists for ${a.sid}, Q${a.qId}, skipping...`);
+                            continue;
+                        }
 
                         let score = 0;
                         let feedback = "";
@@ -1438,6 +1448,9 @@
                             }
                         }
 
+                        // 유형을 한글로 변환하여 저장
+                        const typeKorean = getQuestionTypeName(q.type);
+                        
                         newScores.push([
                             timestamp,
                             a.sid,
@@ -1445,21 +1458,42 @@
                             q.id,
                             score,
                             feedback,
-                            q.type
+                            typeKorean
                         ]);
                     }
 
                     if (newScores.length > 0) {
-                        await checkAndWriteHeader('SCORE', ["Timestamp", "StudentID", "Name", "Q_ID", "Score", "Feedback", "Type", "EmailStatus"]);
-
-                        await gapi.client.sheets.spreadsheets.values.append({
+                        // 저장 전에 다시 한번 중복 확인 (실제 DB에서 확인)
+                        const finalScoreRes = await gapi.client.sheets.spreadsheets.values.get({
                             spreadsheetId: spreadsheetId,
-                            range: 'SCORE!A2',
-                            valueInputOption: 'RAW',
-                            resource: {
-                                values: newScores
-                            }
+                            range: 'SCORE!A2:H'
                         });
+
+                        const finalExistingScores = finalScoreRes.result.values ? finalScoreRes.result.values.map(r => ({
+                            sid: String(r[1]), qId: String(r[3])
+                        })) : [];
+
+                        // 중복 제거: 이미 저장된 점수는 제외
+                        const uniqueNewScores = newScores.filter(scoreRow => {
+                            const sid = String(scoreRow[1]);
+                            const qId = String(scoreRow[3]);
+                            return !finalExistingScores.find(s => s.sid === sid && s.qId === qId);
+                        });
+
+                        if (uniqueNewScores.length > 0) {
+                            await checkAndWriteHeader('SCORE', ["Timestamp", "StudentID", "Name", "Q_ID", "Score", "Feedback", "Type", "EmailStatus"]);
+
+                            await gapi.client.sheets.spreadsheets.values.append({
+                                spreadsheetId: spreadsheetId,
+                                range: 'SCORE!A2',
+                                valueInputOption: 'RAW',
+                                resource: {
+                                    values: uniqueNewScores
+                                }
+                            });
+
+                            console.log(`Saved ${uniqueNewScores.length} new scores (${newScores.length - uniqueNewScores.length} duplicates skipped)`);
+                        }
 
                         // Refresh dashboard if results tab is visible
                         if (!document.getElementById('tab-results').classList.contains('hidden')) {
@@ -1505,7 +1539,7 @@
                         allQuestions = questionRows.map(r => ({
                             id: r[0],
                             group: r[1],
-                            type: r[2],
+                            type: getQuestionTypeEnglish(r[2] || ''), // 한글/영어 모두 처리하여 영어로 정규화 (내부 처리용)
                             points: r[3],
                             content: r[4],
                             answer: r[5],
@@ -1677,7 +1711,7 @@
                         <div class="flex justify-between items-center">
                         <div class="flex-1">
                             <h5 class="font-bold text-lg">Q. ${q.content} (${q.points}점)</h5>
-                            <span class="text-xs text-gray ml-2">유형: ${q.type}</span>
+                            <span class="text-xs text-gray ml-2">유형: ${getQuestionTypeName(q.type)}</span>
                         </div>
                         <div class="flex items-center gap-4">
                             <div class="text-sm">
@@ -1930,7 +1964,7 @@
                         body: JSON.stringify({
                             id: questionId,
                             group,
-                            type,
+                            type: getQuestionTypeName(type), // 한글로 변환하여 저장
                             points,
                             content,
                             answer,
@@ -2234,7 +2268,7 @@
 
             // 문제 삭제 함수
             async function deleteQuestion(questionId, questionContent) {
-                if (!confirm(`다음 문제를 삭제하시겠습니까?\n\n${questionContent.substring(0, 50)}${questionContent.length > 50 ? '...' : ''}\n\n이 작업은 되돌릴 수 없습니다.`)) {
+                if (!confirm(`다음 문제를 삭제하시겠습니까?\n\n${questionContent.substring(0, 50)}${questionContent.length > 50 ? '...' : ''}\n\n⚠️ 주의: 이 문제와 관련된 모든 데이터(학생 응답, 점수)도 함께 삭제됩니다.\n\n이 작업은 되돌릴 수 없습니다.`)) {
                     return;
                 }
 
@@ -2250,17 +2284,35 @@
                         })
                     });
 
-                    const result = await response.json();
+                    // 응답이 없는 경우 처리
+                    if (!response || !response.ok) {
+                        throw new Error(`서버 응답 오류 (${response ? response.status : 'No response'})`);
+                    }
+
+                    // 응답 본문 확인
+                    const responseText = await response.text();
+                    if (!responseText) {
+                        throw new Error('서버에서 빈 응답을 받았습니다.');
+                    }
+
+                    let result;
+                    try {
+                        result = JSON.parse(responseText);
+                    } catch (parseErr) {
+                        console.error('JSON 파싱 오류:', parseErr);
+                        console.error('응답 텍스트:', responseText);
+                        throw new Error('서버 응답을 파싱할 수 없습니다: ' + responseText.substring(0, 100));
+                    }
                     
                     if (result.result === 'success') {
-                        alert("문제가 삭제되었습니다.");
+                        alert("문제와 관련된 모든 데이터가 삭제되었습니다.\n(문제, 학생 응답, 점수)");
                         await loadDashboardData();
                     } else {
                         throw new Error(result.error || '알 수 없는 오류');
                     }
                 } catch (err) {
                     console.error("Error deleting question", err);
-                    alert("문제 삭제 중 오류 발생: " + err.message);
+                    alert("문제 삭제 중 오류 발생: " + err.message + "\n\n네트워크 연결을 확인하거나 잠시 후 다시 시도해주세요.");
                 }
             }
 
@@ -2276,11 +2328,32 @@
 
                 alert("채점을 시작합니다. 잠시만 기다려주세요...");
 
-                for (const a of allAnswers) {
-                    // Check if already graded
-                    if (allScores.find(s => s.sid === a.sid && s.qId === a.qId)) continue;
+                // 기존 점수 확인 (중복 저장 방지)
+                const scoreRes = await gapi.client.sheets.spreadsheets.values.get({
+                    spreadsheetId: spreadsheetId,
+                    range: 'SCORE!A2:H'
+                });
 
-                    const q = allQuestions.find(q => q.id === a.qId);
+                const existingScores = scoreRes.result.values ? scoreRes.result.values.map(r => ({
+                    sid: String(r[1]), qId: String(r[3])
+                })) : [];
+
+                for (const a of allAnswers) {
+                    // Check if already graded (타입 일치를 위해 String으로 변환)
+                    const alreadyGraded = existingScores.find(s => 
+                        s.sid === String(a.sid) && s.qId === String(a.qId)
+                    );
+                    if (alreadyGraded) {
+                        console.log(`Score already exists for ${a.sid}, Q${a.qId}, skipping...`);
+                        continue;
+                    }
+
+                    // allScores에서도 확인 (메모리 캐시)
+                    if (allScores.find(s => String(s.sid) === String(a.sid) && String(s.qId) === String(a.qId))) {
+                        continue;
+                    }
+
+                    const q = allQuestions.find(q => String(q.id) === String(a.qId));
                     if (!q) continue;
 
                     let score = 0;
@@ -2394,6 +2467,9 @@
                         }
                     }
 
+                    // 유형을 한글로 변환하여 저장
+                    const typeKorean = getQuestionTypeName(q.type);
+                    
                     newScores.push([
                         timestamp,
                         a.sid,
@@ -2401,13 +2477,36 @@
                         q.id,
                         score,
                         feedback,
-                        q.type,
+                        typeKorean,
                         '' // EmailStatus - 초기값은 빈 문자열
                     ]);
                 }
 
                 if (newScores.length > 0) {
                     try {
+                        // 저장 전에 다시 한번 중복 확인 (실제 DB에서 확인)
+                        const finalScoreRes = await gapi.client.sheets.spreadsheets.values.get({
+                            spreadsheetId: spreadsheetId,
+                            range: 'SCORE!A2:H'
+                        });
+
+                        const finalExistingScores = finalScoreRes.result.values ? finalScoreRes.result.values.map(r => ({
+                            sid: String(r[1]), qId: String(r[3])
+                        })) : [];
+
+                        // 중복 제거: 이미 저장된 점수는 제외
+                        const uniqueNewScores = newScores.filter(scoreRow => {
+                            const sid = String(scoreRow[1]);
+                            const qId = String(scoreRow[3]);
+                            return !finalExistingScores.find(s => s.sid === sid && s.qId === qId);
+                        });
+
+                        if (uniqueNewScores.length === 0) {
+                            alert("새로 채점할 내역이 없습니다. (이미 저장된 점수가 있습니다)");
+                            await loadDashboardData();
+                            return;
+                        }
+
                         await checkAndWriteHeader('SCORE', ["Timestamp", "StudentID", "Name", "Q_ID", "Score", "Feedback", "Type", "EmailStatus"]);
 
                         await gapi.client.sheets.spreadsheets.values.append({
@@ -2415,11 +2514,11 @@
                             range: 'SCORE!A2',
                             valueInputOption: 'RAW',
                             resource: {
-                                values: newScores
+                                values: uniqueNewScores
                             }
                         });
 
-                        alert(`${newScores.length}건의 채점이 완료되었습니다.`);
+                        alert(`${uniqueNewScores.length}건의 채점이 완료되었습니다.`);
                         await loadDashboardData(); // Reload
                     } catch (err) {
                         console.error("Save Scores Error", err);
@@ -2786,11 +2885,20 @@ ${feedback}
                 });
             }
 
+            // 유형을 한글로 변환하는 함수
             function getQuestionTypeName(type) {
-                if (type === 'choice') return '선택형';
-                if (type === 'short') return '단답형';
-                if (type === 'essay') return '서논술형';
-                return type;
+                if (type === 'choice' || type === '선택형') return '선택형';
+                if (type === 'short' || type === '단답형') return '단답형';
+                if (type === 'essay' || type === '서논술형') return '서논술형';
+                return type; // 이미 한글이거나 알 수 없는 경우 그대로 반환
+            }
+
+            // 유형을 영어로 변환하는 함수 (내부 처리용)
+            function getQuestionTypeEnglish(type) {
+                if (type === '선택형' || type === 'choice') return 'choice';
+                if (type === '단답형' || type === 'short') return 'short';
+                if (type === '서논술형' || type === 'essay') return 'essay';
+                return type; // 이미 영어이거나 알 수 없는 경우 그대로 반환
             }
 
             function removeQuestion(index) {
@@ -2812,7 +2920,10 @@ ${feedback}
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                            questions: questions,
+                            questions: questions.map(q => ({
+                                ...q,
+                                type: getQuestionTypeName(q.type) // 한글로 변환하여 저장
+                            })),
                             spreadsheetId: spreadsheetId
                         })
                     });
@@ -2842,7 +2953,7 @@ ${feedback}
                         const values = questions.map(q => [
                             q.id,
                             q.group,
-                            q.type,
+                            getQuestionTypeName(q.type), // 한글로 변환하여 저장
                             q.points,
                             q.content,
                             q.answer,
@@ -2996,7 +3107,7 @@ ${feedback}
                     let loadedQuestions = rows.map(row => ({
                         id: row[0],
                         group: row[1] || '기본 그룹',
-                        type: row[2],
+                        type: getQuestionTypeEnglish(row[2] || ''), // 한글/영어 모두 처리하여 영어로 정규화 (내부 처리용)
                         points: row[3],
                         content: row[4],
                         answer: row[5],
@@ -3323,7 +3434,9 @@ ${feedback}
 
                         // Save all grading results to SCORE sheet (including 0 scores)
                         // This ensures the displayed score matches the saved score
-                        await autoGradeAndSave(a.qId, sid, sname, gradingResult.score, gradingResult.feedback, question.type);
+                        // 유형을 한글로 변환하여 저장
+                        const typeKorean = getQuestionTypeName(question.type);
+                        await autoGradeAndSave(a.qId, sid, sname, gradingResult.score, gradingResult.feedback, typeKorean);
                     }
 
                     btn.innerText = originalText;
@@ -3346,6 +3459,9 @@ ${feedback}
                         return;
                     }
 
+                    // 유형을 한글로 변환 (안전장치)
+                    const typeKorean = getQuestionTypeName(type);
+
                     // 기존 점수가 있는지 확인 (중복 저장 방지)
                     const scoreRes = await gapi.client.sheets.spreadsheets.values.get({
                         spreadsheetId: spreadsheetId,
@@ -3353,23 +3469,23 @@ ${feedback}
                     });
 
                     if (scoreRes.result.values) {
-                        // 이미 해당 학생과 문제의 점수가 있는지 확인
+                        // 이미 해당 학생과 문제의 점수가 있는지 확인 (타입 일치를 위해 String으로 변환)
                         const existingScore = scoreRes.result.values.find(row => 
                             String(row[1]) === String(sid) && String(row[3]) === String(qId)
                         );
 
                         if (existingScore) {
-                            // 기존 점수가 있으면 업데이트
+                            // 기존 점수가 있으면 업데이트 (점수, 피드백, 유형 모두 업데이트)
                             const rowIndex = scoreRes.result.values.findIndex(row => 
                                 String(row[1]) === String(sid) && String(row[3]) === String(qId)
                             ) + 2; // +2 because range starts at A2
 
                             await gapi.client.sheets.spreadsheets.values.update({
                                 spreadsheetId: spreadsheetId,
-                                range: `SCORE!E${rowIndex}:F${rowIndex}`,
+                                range: `SCORE!E${rowIndex}:G${rowIndex}`,
                                 valueInputOption: 'RAW',
                                 resource: {
-                                    values: [[score, feedback]]
+                                    values: [[score, feedback, typeKorean]]
                                 }
                             });
                             console.log(`Updated score for ${sid}, Q${qId}: ${score}점`);
@@ -3392,7 +3508,7 @@ ${feedback}
                                 qId,
                                 score,
                                 feedback,
-                                type,
+                                typeKorean, // 한글로 저장
                                 '' // EmailStatus - 초기값은 빈 문자열
                             ]]
                         }
