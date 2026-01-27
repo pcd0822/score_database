@@ -20,6 +20,7 @@
         let gapiInited = false;
         let gisInited = false;
         let spreadsheetId = localStorage.getItem('grading_spreadsheet_id') || '';
+        const APPS_CRIPT_URL = "https://script.google.com/macros/s/AKfycbxGob3T0fv_qhrEQENpMIJVgRB5RQu6GEQN5biE3dnuIT1jOudXP7imCsbVPBUxD_o9JA/exec";
 
         // State Management
         let currentUser = null;
@@ -553,7 +554,7 @@
                 gap: 5rem;
                 max-width: 95%;
             }
-            
+
             #quiz-setup-grid .card {
                 min-width: 0;
                 width: 100% !important;
@@ -605,11 +606,11 @@
             .results-stat-card {
                 flex: 0 0 calc(50% - 0.75rem);
             }
-            
+
             #results-stats-container {
                 margin: 0.5rem 0;
             }
-            
+
             .results-folders-card,
             #folder-detail-view {
                 width: 100%;
@@ -2083,12 +2084,30 @@ ${feedback}
 
             async function loadQuizFromSheets() {
                 try {
-                    const response = await gapi.client.sheets.spreadsheets.values.get({
-                        spreadsheetId: spreadsheetId,
-                        range: 'Quiz!A2:I', // Extended Range for 9 columns
-                    });
+                    let rows = [];
 
-                    const rows = response.result.values;
+                    // 1. Try fetching from App Script (Works for Private Sheets if Script is 'Execute as Me')
+                    try {
+                        const res = await fetch(APPS_CRIPT_URL + '?type=quiz');
+                        const json = await res.json();
+
+                        // Handle different possible return formats
+                        if (json.data && Array.isArray(json.data)) rows = json.data;
+                        else if (Array.isArray(json)) rows = json;
+                        else if (json.values && Array.isArray(json.values)) rows = json.values;
+
+                        console.log("Loaded via App Script", rows.length);
+                    } catch (scriptErr) {
+                        console.warn("App Script Load Failed, falling back to GAPI", scriptErr);
+
+                        // 2. Fallback to GAPI (Requires Public Sheet or User Login)
+                        const response = await gapi.client.sheets.spreadsheets.values.get({
+                            spreadsheetId: spreadsheetId,
+                            range: 'Quiz!A2:I',
+                        });
+                        rows = response.result.values;
+                    }
+
                     if (!rows || rows.length === 0) {
                         document.getElementById('student-questions-container').innerHTML = '문제 로드 실패 또는 문제가 없습니다.';
                         return;
@@ -2102,7 +2121,7 @@ ${feedback}
                         points: row[3],
                         content: row[4],
                         answer: row[5],
-                        options: row[6] ? JSON.parse(row[6] || '[]') : [],
+                        options: row[6] ? (typeof row[6] === 'string' ? JSON.parse(row[6] || '[]') : row[6]) : [],
                         rubric: row[7] || '',
                         explanation: row[8] || ''
                     }));
@@ -2339,7 +2358,6 @@ ${feedback}
                 });
 
                 const timestamp = new Date().toISOString();
-                const APPS_CRIPT_URL = "https://script.google.com/macros/s/AKfycbziE3F1IUrCr0gc9Dm7xOdLWXbjbjgnxqHay7uJTszMHooXepwXsLUdGd7_TmHT4nC2Wg/exec";
 
                 try {
                     const btn = document.querySelector('button[onclick="submitQuiz()"]');
@@ -2446,4 +2464,3 @@ ${feedback}
 </body>
 
 </html>
-
