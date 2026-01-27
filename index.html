@@ -167,6 +167,74 @@
             display: none !important;
         }
 
+        /* 우측 슬라이딩 패널 스타일 */
+        .slide-panel {
+            position: fixed;
+            top: 0;
+            right: -100%;
+            width: 600px;
+            max-width: 90vw;
+            height: 100vh;
+            background: var(--bg-card);
+            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            transition: right 0.3s ease-in-out;
+            overflow-y: auto;
+            padding: 2rem;
+        }
+
+        .slide-panel.active {
+            right: 0;
+        }
+
+        .slide-panel-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+        }
+
+        .slide-panel-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* 학생 응답 테이블 스타일 */
+        .answers-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .answers-table th,
+        .answers-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .answers-table th {
+            background: rgba(255, 255, 255, 0.05);
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .answers-table tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .answer-cell {
+            max-width: 300px;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+
         .flex {
             display: flex;
         }
@@ -1417,89 +1485,38 @@
 
                 // Render list of questions in this group
                 groupQs.forEach(q => {
-                    const qAnswers = allAnswers.filter(a => a.qId === q.id);
-                    const gradedCount = qAnswers.filter(a => allScores.find(s => s.sid === a.sid && s.qId === a.qId)).length;
+                    // qId 타입 일치를 위해 String으로 변환하여 비교
+                    const qAnswers = allAnswers.filter(a => String(a.qId) === String(q.id));
+                    const gradedCount = qAnswers.filter(a => allScores.find(s => s.sid === a.sid && String(s.qId) === String(a.qId))).length;
 
                     const qDiv = document.createElement('div');
                     qDiv.className = 'p-4 border border-white/10 rounded bg-white/5 mb-6';
                     qDiv.innerHTML = `
-                    <div class="flex justify-between items-center">
-                        <div class="flex-1 cursor-pointer" onclick="toggleAnswers('${q.id}')">
+                        <div class="flex justify-between items-center">
+                        <div class="flex-1">
                             <h5 class="font-bold text-lg">Q. ${q.content} (${q.points}점)</h5>
                             <span class="text-xs text-gray ml-2">유형: ${q.type}</span>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <div class="text-sm mr-4">
-                                <span class="mr-2">응답: ${qAnswers.length}</span>
+                        <div class="flex items-center gap-4">
+                            <div class="text-sm">
+                                <span class="mr-3">응답: ${qAnswers.length}</span>
                                 <span class="text-success">완료: ${gradedCount}</span>
                             </div>
+                            <button onclick="event.stopPropagation(); showAnswersTable('${q.id}')" 
+                                    class="btn btn-secondary text-xs px-4 py-2">📋 응답 보기</button>
                             <button onclick="event.stopPropagation(); editQuestion('${q.id}')" 
-                                    class="btn btn-secondary text-xs px-3 py-1">✏️ 수정</button>
+                                    class="btn btn-secondary text-xs px-4 py-2">✏️ 수정</button>
                             <button onclick="event.stopPropagation(); deleteQuestion('${q.id}', '${q.content.replace(/'/g, "\\'")}')" 
-                                    class="btn btn-danger text-xs px-3 py-1">🗑️ 삭제</button>
-                            <span class="text-xs ml-2 cursor-pointer" onclick="toggleAnswers('${q.id}')">▼</span>
+                                    class="btn btn-danger text-xs px-4 py-2">🗑️ 삭제</button>
                         </div>
-                    </div>
-                    <div id="answers-${q.id}" class="hidden mt-4 border-t border-white/10 pt-4 space-y-2">
-                        <!-- Student Answers injected here -->
                     </div>
                  `;
                     list.appendChild(qDiv);
 
-                    // Pre-render answers
-                    const ansContainer = qDiv.querySelector(`#answers-${q.id}`);
-                    if (qAnswers.length === 0) {
-                        ansContainer.innerHTML = '<p class="text-sm text-gray">제출된 답안이 없습니다.</p>';
-                    } else {
-                        qAnswers.forEach(a => {
-                            const scoreData = allScores.find(s => s.sid === a.sid && s.qId === a.qId);
-                            const isGraded = !!scoreData;
-                            const score = isGraded ? scoreData.score : 0;
-                            const feedback = isGraded ? scoreData.feedback : '';
-
-                            const aDiv = document.createElement('div');
-                            aDiv.className = 'p-4 bg-black/20 rounded mb-6';
-                            aDiv.innerHTML = `
-                             <div class="flex justify-between text-sm mb-4">
-                                <span class="font-bold text-primary">${a.name} (${a.sid})</span>
-                                <span class="${isGraded ? 'text-success' : 'text-gray'}">${isGraded ? score + '점 / ' + q.points + '점' : '미채점'}</span>
-                             </div>
-                             <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-4">
-                                <div>
-                                    <label class="text-xs text-gray block mb-2">학생 답안:</label>
-                                    <p class="text-sm text-white/90 p-3 bg-white/5 rounded min-h-[80px]">${a.answer || '(답안 없음)'}</p>
-                                </div>
-                                ${isGraded ? `
-                                <div>
-                                    <label class="text-xs text-gray block mb-2">채점 결과:</label>
-                                    <p class="text-sm text-white/90 p-3 bg-white/5 rounded min-h-[80px]">${feedback || '(피드백 없음)'}</p>
-                                </div>
-                                ` : `
-                                <div>
-                                    <label class="text-xs text-gray block mb-2">채점 결과:</label>
-                                    <p class="text-sm text-gray p-3 bg-white/5 rounded min-h-[80px]">미채점</p>
-                                </div>
-                                `}
-                             </div>
-                              <div class="mt-4 pt-4">
-                                  <label class="text-xs text-secondary block mb-2">교사 피드백 작성</label>
-                                  <div class="flex gap-3">
-                                      <textarea id="fb_${a.sid}_${a.qId}" class="text-xs p-2 rounded bg-white/5 mr-2" rows="3" placeholder="피드백을 입력하세요" style="border: none !important; flex: 4.5 1 0%;">${feedback}</textarea>
-                                      <button onclick="saveFeedbackAndSend('${a.sid}', '${a.qId}', '${a.email}', '${a.name}', '${q.content}', ${score}, '${a.timestamp}')" 
-                                       class="btn btn-primary text-xs h-auto whitespace-nowrap px-3 py-2" style="border: none; flex: 1 1 0%;">저장 및 전송</button>
-                                  </div>
-                              </div>
-                        `;
-                            ansContainer.appendChild(aDiv);
-                        });
-                    }
+                    // 답안 컨테이너는 더 이상 사용하지 않음 (우측 패널로 이동)
                 });
             }
 
-            function toggleAnswers(qId) {
-                const el = document.getElementById(`answers-${qId}`);
-                el.classList.toggle('hidden');
-            }
 
             function closeFolder() {
                 document.getElementById('folder-detail-view').classList.add('hidden');
@@ -1507,16 +1524,31 @@
 
             // 문제 수정 함수
             async function editQuestion(questionId) {
-                const question = allQuestions.find(q => q.id == questionId);
+                const question = allQuestions.find(q => String(q.id) === String(questionId));
                 if (!question) {
                     alert("문제를 찾을 수 없습니다.");
                     return;
                 }
 
-                // 문제 수정 모달 표시
-                const modal = document.createElement('div');
-                modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-50';
-                modal.id = 'edit-question-modal';
+                // 기존 패널이 있으면 제거
+                const existingPanel = document.getElementById('edit-question-panel');
+                if (existingPanel) {
+                    existingPanel.remove();
+                }
+                const existingOverlay = document.getElementById('edit-question-overlay');
+                if (existingOverlay) {
+                    existingOverlay.remove();
+                }
+
+                // 우측 슬라이딩 패널 생성
+                const overlay = document.createElement('div');
+                overlay.className = 'slide-panel-overlay';
+                overlay.id = 'edit-question-overlay';
+                overlay.onclick = closeEditModal;
+                
+                const panel = document.createElement('div');
+                panel.className = 'slide-panel';
+                panel.id = 'edit-question-panel';
                 
                 // 문제 데이터를 폼에 채우기
                 let optionsHtml = '';
@@ -1546,9 +1578,12 @@
                     }
                 }
 
-                modal.innerHTML = `
-                    <div class="bg-gray-900 p-8 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                        <h3 class="text-2xl font-bold mb-6">문제 수정</h3>
+                panel.innerHTML = `
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-2xl font-bold">문제 수정</h3>
+                        <button onclick="closeEditModal()" class="btn btn-secondary text-sm">✕ 닫기</button>
+                    </div>
+                    <div class="space-y-4">
                         <div class="space-y-4">
                             <div class="input-group">
                                 <label>폴더명</label>
@@ -1600,7 +1635,14 @@
                         </div>
                     </div>
                 `;
-                document.body.appendChild(modal);
+                document.body.appendChild(overlay);
+                document.body.appendChild(panel);
+                
+                // 애니메이션을 위해 약간의 지연 후 active 클래스 추가
+                setTimeout(() => {
+                    overlay.classList.add('active');
+                    panel.classList.add('active');
+                }, 10);
                 
                 // 전역 변수에 편집 중인 옵션 저장
                 window.editOptions = question.type === 'choice' && question.options 
@@ -1733,10 +1775,217 @@
             }
 
             function closeEditModal() {
-                const modal = document.getElementById('edit-question-modal');
-                if (modal) {
-                    modal.remove();
+                const panel = document.getElementById('edit-question-panel');
+                const overlay = document.getElementById('edit-question-overlay');
+                if (panel) {
+                    panel.classList.remove('active');
+                    setTimeout(() => panel.remove(), 300);
                 }
+                if (overlay) {
+                    overlay.classList.remove('active');
+                    setTimeout(() => overlay.remove(), 300);
+                }
+            }
+
+            // 학생 응답 테이블 표시 함수
+            function showAnswersTable(questionId) {
+                const question = allQuestions.find(q => String(q.id) === String(questionId));
+                if (!question) {
+                    alert("문제를 찾을 수 없습니다.");
+                    return;
+                }
+
+                // qId 타입 일치를 위해 String으로 변환하여 비교
+                const qAnswers = allAnswers.filter(a => String(a.qId) === String(questionId));
+                
+                // 기존 패널이 있으면 제거
+                const existingPanel = document.getElementById('answers-table-panel');
+                if (existingPanel) {
+                    existingPanel.remove();
+                }
+                const existingOverlay = document.getElementById('answers-table-overlay');
+                if (existingOverlay) {
+                    existingOverlay.remove();
+                }
+
+                // 우측 슬라이딩 패널 생성
+                const overlay = document.createElement('div');
+                overlay.className = 'slide-panel-overlay';
+                overlay.id = 'answers-table-overlay';
+                overlay.onclick = closeAnswersTable;
+                
+                const panel = document.createElement('div');
+                panel.className = 'slide-panel';
+                panel.id = 'answers-table-panel';
+
+                // 테이블 헤더 생성
+                let tableRows = '';
+                if (qAnswers.length === 0) {
+                    tableRows = '<tr><td colspan="5" class="text-center text-gray py-8">제출된 답안이 없습니다.</td></tr>';
+                } else {
+                    qAnswers.forEach((a, index) => {
+                        const scoreData = allScores.find(s => s.sid === a.sid && String(s.qId) === String(questionId));
+                        const isGraded = !!scoreData;
+                        const score = isGraded ? scoreData.score : 0;
+                        const feedback = isGraded ? scoreData.feedback : '';
+                        
+                        tableRows += `
+                            <tr>
+                                <td>${index + 1}</td>
+                                <td>${a.name || ''}</td>
+                                <td>${a.sid || ''}</td>
+                                <td class="answer-cell">${(a.answer || '').substring(0, 100)}${(a.answer || '').length > 100 ? '...' : ''}</td>
+                                <td>
+                                    <span class="${isGraded ? 'text-success' : 'text-gray'}">
+                                        ${isGraded ? score + '점 / ' + question.points + '점' : '미채점'}
+                                    </span>
+                                </td>
+                                <td>
+                                    <button onclick="openAnswerDetail('${a.sid}', '${questionId}', '${(a.name || '').replace(/'/g, "\\'")}', '${(a.email || '').replace(/'/g, "\\'")}', '${(a.answer || '').replace(/'/g, "\\'").replace(/\n/g, '\\n')}', '${(question.content || '').replace(/'/g, "\\'")}', ${question.points}, ${score}, '${(feedback || '').replace(/'/g, "\\'").replace(/\n/g, '\\n')}', '${a.timestamp}')" 
+                                            class="btn btn-primary text-xs px-3 py-1">피드백</button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                }
+
+                panel.innerHTML = `
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-2xl font-bold">학생 응답 목록</h3>
+                        <button onclick="closeAnswersTable()" class="btn btn-secondary text-sm">✕ 닫기</button>
+                    </div>
+                    <div class="mb-4">
+                        <p class="text-sm text-gray mb-2">문제: ${question.content}</p>
+                        <p class="text-xs text-gray">총 ${qAnswers.length}개 응답</p>
+                    </div>
+                    <table class="answers-table">
+                        <thead>
+                            <tr>
+                                <th>번호</th>
+                                <th>이름</th>
+                                <th>학번</th>
+                                <th>답안</th>
+                                <th>점수</th>
+                                <th>작업</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${tableRows}
+                        </tbody>
+                    </table>
+                `;
+                document.body.appendChild(overlay);
+                document.body.appendChild(panel);
+                
+                // 애니메이션을 위해 약간의 지연 후 active 클래스 추가
+                setTimeout(() => {
+                    overlay.classList.add('active');
+                    panel.classList.add('active');
+                }, 10);
+            }
+
+            function closeAnswersTable() {
+                const panel = document.getElementById('answers-table-panel');
+                const overlay = document.getElementById('answers-table-overlay');
+                if (panel) {
+                    panel.classList.remove('active');
+                    setTimeout(() => panel.remove(), 300);
+                }
+                if (overlay) {
+                    overlay.classList.remove('active');
+                    setTimeout(() => overlay.remove(), 300);
+                }
+            }
+
+            // 개별 응답 상세 보기 및 피드백 작성
+            function openAnswerDetail(sid, qId, name, email, answer, questionContent, points, score, feedback, timestamp) {
+                // 기존 패널이 있으면 제거
+                const existingPanel = document.getElementById('answer-detail-panel');
+                if (existingPanel) {
+                    existingPanel.remove();
+                }
+                const existingOverlay = document.getElementById('answer-detail-overlay');
+                if (existingOverlay) {
+                    existingOverlay.remove();
+                }
+
+                // 우측 슬라이딩 패널 생성
+                const overlay = document.createElement('div');
+                overlay.className = 'slide-panel-overlay';
+                overlay.id = 'answer-detail-overlay';
+                overlay.onclick = closeAnswerDetail;
+                
+                const panel = document.createElement('div');
+                panel.className = 'slide-panel';
+                panel.id = 'answer-detail-panel';
+
+                panel.innerHTML = `
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-2xl font-bold">피드백 작성</h3>
+                        <button onclick="closeAnswerDetail()" class="btn btn-secondary text-sm">✕ 닫기</button>
+                    </div>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-sm text-gray block mb-2">학생 정보</label>
+                            <p class="text-white">${name} (${sid})</p>
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray block mb-2">문제</label>
+                            <p class="text-white bg-white/5 p-3 rounded">${questionContent}</p>
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray block mb-2">학생 답안</label>
+                            <div class="bg-white/5 p-4 rounded min-h-[150px] whitespace-pre-wrap">${answer}</div>
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray block mb-2">현재 점수</label>
+                            <p class="text-white">${score || 0}점 / ${points}점</p>
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray block mb-2">피드백 작성</label>
+                            <textarea id="answer-feedback-text" rows="6" class="w-full p-3 rounded bg-white/5" placeholder="피드백을 입력하세요">${feedback || ''}</textarea>
+                        </div>
+                        <div class="flex gap-4 mt-6">
+                            <button onclick="saveAnswerFeedback('${sid}', '${qId}', '${email.replace(/'/g, "\\'")}', '${name.replace(/'/g, "\\'")}', '${questionContent.replace(/'/g, "\\'")}', ${points}, '${timestamp}')" 
+                                    class="btn btn-primary flex-1">저장 및 이메일 전송</button>
+                            <button onclick="closeAnswerDetail()" class="btn btn-secondary flex-1">취소</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(overlay);
+                document.body.appendChild(panel);
+                
+                // 애니메이션을 위해 약간의 지연 후 active 클래스 추가
+                setTimeout(() => {
+                    overlay.classList.add('active');
+                    panel.classList.add('active');
+                }, 10);
+            }
+
+            function closeAnswerDetail() {
+                const panel = document.getElementById('answer-detail-panel');
+                const overlay = document.getElementById('answer-detail-overlay');
+                if (panel) {
+                    panel.classList.remove('active');
+                    setTimeout(() => panel.remove(), 300);
+                }
+                if (overlay) {
+                    overlay.classList.remove('active');
+                    setTimeout(() => overlay.remove(), 300);
+                }
+            }
+
+            async function saveAnswerFeedback(sid, qId, email, name, questionContent, points, timestamp) {
+                const feedback = document.getElementById('answer-feedback-text').value;
+                const scoreData = allScores.find(s => s.sid === sid && String(s.qId) === String(qId));
+                const currentScore = scoreData ? scoreData.score : 0;
+
+                await saveFeedbackAndSend(sid, qId, email, name, questionContent, currentScore, timestamp, feedback);
+                closeAnswerDetail();
+                // 응답 테이블 새로고침
+                const questionId = qId;
+                closeAnswersTable();
+                setTimeout(() => showAnswersTable(questionId), 350);
             }
 
             // 문제 삭제 함수
@@ -1897,9 +2146,14 @@
                 }
             }
 
-            async function saveFeedbackAndSend(sid, qId, email, name, question, score, timestamp) {
-                const feedbackTextarea = document.getElementById(`fb_${sid}_${qId}`);
-                const feedback = feedbackTextarea.value.trim();
+            async function saveFeedbackAndSend(sid, qId, email, name, question, score, timestamp, feedbackParam = null) {
+                let feedback;
+                if (feedbackParam !== null) {
+                    feedback = feedbackParam.trim();
+                } else {
+                    const feedbackTextarea = document.getElementById(`fb_${sid}_${qId}`);
+                    feedback = feedbackTextarea ? feedbackTextarea.value.trim() : '';
+                }
 
                 if (!feedback) {
                     alert("피드백을 입력해주세요.");
@@ -1918,11 +2172,11 @@
                         return;
                     }
 
-                    // 해당 학생과 문제의 행 찾기
+                    // 해당 학생과 문제의 행 찾기 (타입 일치를 위해 String으로 변환)
                     let rowIndex = -1;
                     for (let i = 0; i < scoreRes.result.values.length; i++) {
                         const row = scoreRes.result.values[i];
-                        if (row[1] === sid && row[3] === qId) {
+                        if (String(row[1]) === String(sid) && String(row[3]) === String(qId)) {
                             rowIndex = i + 2; // +2 because range starts at A2
                             break;
                         }
