@@ -20,7 +20,7 @@
         let gapiInited = false;
         let gisInited = false;
         let spreadsheetId = localStorage.getItem('grading_spreadsheet_id') || '';
-        const APPS_CRIPT_URL = "https://script.google.com/macros/s/AKfycbxGob3T0fv_qhrEQENpMIJVgRB5RQu6GEQN5biE3dnuIT1jOudXP7imCsbVPBUxD_o9JA/exec";
+        const APPS_CRIPT_URL = "https://script.google.com/macros/s/AKfycbzD88VCr-3tuzU2A3G90KNtF1wzoGPnqFHUPSftKu57TLGPy-u-IXVS6vB07eCJypIXAg/exec";
 
         // State Management
         let currentUser = null;
@@ -1228,14 +1228,31 @@
             async function loadDashboardData() {
                 try {
                     console.log("Loading Dashboard Data...");
-                    // Load Questions
-                    const qRes = await gapi.client.sheets.spreadsheets.values.get({
-                        spreadsheetId: spreadsheetId,
-                        range: 'Quiz!A2:I'
-                    });
+                    // Load Questions - 앱스크립트를 통해 조회 (배포된 스프레드시트와 동기화)
+                    let questionRows = [];
+                    try {
+                        const res = await fetch(APPS_CRIPT_URL + '?type=quiz');
+                        const json = await res.json();
 
-                    if (qRes.result.values) {
-                        allQuestions = qRes.result.values.map(r => ({
+                        // Handle different possible return formats
+                        if (json.data && Array.isArray(json.data)) questionRows = json.data;
+                        else if (Array.isArray(json)) questionRows = json;
+                        else if (json.values && Array.isArray(json.values)) questionRows = json.values;
+
+                        console.log("Loaded questions via App Script", questionRows.length);
+                    } catch (scriptErr) {
+                        console.warn("App Script Load Failed, falling back to GAPI", scriptErr);
+
+                        // Fallback to GAPI (Requires Public Sheet or User Login)
+                        const qRes = await gapi.client.sheets.spreadsheets.values.get({
+                            spreadsheetId: spreadsheetId,
+                            range: 'Quiz!A2:I'
+                        });
+                        questionRows = qRes.result.values || [];
+                    }
+
+                    if (questionRows && questionRows.length > 0) {
+                        allQuestions = questionRows.map(r => ({
                             id: r[0],
                             group: r[1],
                             type: r[2],
@@ -1971,45 +1988,66 @@ ${feedback}
                     return;
                 }
 
-                // Header: [ID, Group, Type, Points, Question, Answer, Options, Rubric, Explanation]
-                // Note: Explanation is in column I (9th column), not G
-                const values = questions.map(q => [
-                    q.id,
-                    q.group,
-                    q.type,
-                    q.points,
-                    q.content,
-                    q.answer,
-                    q.options || "",
-                    q.rubric || "",
-                    q.explanation || ""
-                ]);
-
                 try {
-                    const header = ["ID", "Group", "Type", "Points", "Question", "Answer", "Options", "Rubric", "Explanation"];
-
-                    // Simple header check/write - this might duplicate if columns changed but sheet not cleared.
-                    // Assuming user starts fresh or I just append. 
-                    // Better to just append for now, user manages sheet structure.
-                    // But wait, if previous sheet has 7 columns, appending 9 will mismatch.
-                    // I will try to check first row.
-
-                    await checkAndWriteHeader('Quiz', header);
-
-                    await gapi.client.sheets.spreadsheets.values.append({
-                        spreadsheetId: spreadsheetId,
-                        range: 'Quiz!A2',
-                        valueInputOption: 'RAW',
-                        resource: {
-                            values: values
-                        }
+                    // 앱스크립트를 통해 저장 (배포된 스프레드시트와 동기화)
+                    const response = await fetch(APPS_CRIPT_URL + '?type=quiz', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            questions: questions
+                        })
                     });
 
-                    alert("문제가 저장되었습니다!\n\n각 폴더별 링크는 '결과 및 채점' 탭에서 확인할 수 있습니다.");
+                    const result = await response.json();
+                    
+                    if (result.result === 'success') {
+                        alert(`문제가 저장되었습니다! (${result.count || questions.length}개)\n\n각 폴더별 링크는 '결과 및 채점' 탭에서 확인할 수 있습니다.`);
+                        
+                        // 대시보드 데이터도 새로고침 (선택사항)
+                        if (typeof loadDashboardData === 'function') {
+                            await loadDashboardData();
+                        }
+                    } else {
+                        throw new Error(result.error || '알 수 없는 오류');
+                    }
 
                 } catch (err) {
-                    console.error("Error saving to sheets", err);
-                    alert("저장 중 오류 발생: " + err.message);
+                    console.error("Error saving to sheets via App Script", err);
+                    
+                    // 폴백: 직접 GAPI로 저장 시도
+                    try {
+                        console.log("Falling back to direct GAPI save...");
+                        const header = ["ID", "Group", "Type", "Points", "Question", "Answer", "Options", "Rubric", "Explanation"];
+                        await checkAndWriteHeader('Quiz', header);
+
+                        const values = questions.map(q => [
+                            q.id,
+                            q.group,
+                            q.type,
+                            q.points,
+                            q.content,
+                            q.answer,
+                            q.options || "",
+                            q.rubric || "",
+                            q.explanation || ""
+                        ]);
+
+                        await gapi.client.sheets.spreadsheets.values.append({
+                            spreadsheetId: spreadsheetId,
+                            range: 'Quiz!A2',
+                            valueInputOption: 'RAW',
+                            resource: {
+                                values: values
+                            }
+                        });
+
+                        alert("문제가 저장되었습니다! (GAPI 직접 저장)\n\n각 폴더별 링크는 '결과 및 채점' 탭에서 확인할 수 있습니다.");
+                    } catch (fallbackErr) {
+                        console.error("Fallback save also failed", fallbackErr);
+                        alert("저장 중 오류 발생: " + (err.message || err.toString()) + "\n\n폴백 저장도 실패했습니다: " + (fallbackErr.message || fallbackErr.toString()));
+                    }
                 }
             }
 
