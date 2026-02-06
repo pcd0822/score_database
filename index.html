@@ -57,6 +57,10 @@
         //    예시: 'https://script.google.com/macros/s/AKfycbz.../exec'
         const APPS_CRIPT_URL = "https://script.google.com/macros/s/AKfycbzcfBkz33ebfffmdCa9_kaqo8Ngd_2STlvQN3uF4ySzkAz54Vu_VQUquL2fdRrBghAO/exec";
         
+        // 학생 링크의 appsScriptUrl 파라미터로 덮어쓸 URL (같은 스프레드시트용)
+        let studentAppsScriptUrl = '';
+        function getAppsScriptUrl() { return studentAppsScriptUrl || APPS_CRIPT_URL; }
+        
         // ============================================
         // 🔧 설정 영역 끝
         // ============================================
@@ -1033,6 +1037,12 @@
             <div class="nav-item active" onclick="switchTab('quiz-setup')">문제 출제</div>
             <div class="nav-item" onclick="switchTab('results')">결과 및 채점</div>
             <div class="nav-item text-success" onclick="openSpreadsheet()">📊 스프레드시트 열기</div>
+            <div class="px-2 py-2 mt-2 border-t border-white/10">
+                <label class="text-xs text-gray block mb-1">Apps Script 웹앱 URL</label>
+                <input type="text" id="teacher-apps-script-url" placeholder="웹앱 배포 URL" class="w-full text-xs p-2 rounded bg-black/20 border border-white/10 mb-1" style="font-size: 11px;">
+                <button type="button" onclick="saveTeacherAppsScriptUrl()" class="btn btn-secondary text-xs w-full py-1">URL 저장</button>
+                <p class="text-xs text-gray mt-1">문제 저장용 시트와 동일한 스프레드시트에 스크립트를 배포한 URL을 입력하세요.</p>
+            </div>
             <div class="mt-auto pt-8">
                 <div class="nav-item text-danger" onclick="logout()">로그아웃</div>
             </div>
@@ -1320,8 +1330,28 @@
                 // Load dashboard data for results tab (will be shown when user switches)
                 loadDashboardData();
 
+                var urlInput = document.getElementById('teacher-apps-script-url');
+                if (urlInput) urlInput.value = localStorage.getItem('teacher_apps_script_url') || APPS_CRIPT_URL || '';
+
                 // Auto-grade new submissions periodically
                 setInterval(autoGradeNewSubmissions, 30000); // Check every 30 seconds
+            }
+
+            function saveTeacherAppsScriptUrl() {
+                var input = document.getElementById('teacher-apps-script-url');
+                if (!input) return;
+                var url = (input.value || '').trim();
+                if (!url) {
+                    localStorage.removeItem('teacher_apps_script_url');
+                    alert('Apps Script URL이 삭제되었습니다. 기본 URL을 사용합니다.');
+                    return;
+                }
+                if (!url.startsWith('https://script.google.com/')) {
+                    alert('올바른 Google Apps Script 웹앱 URL을 입력하세요. (https://script.google.com/... 로 시작)');
+                    return;
+                }
+                localStorage.setItem('teacher_apps_script_url', url);
+                alert('Apps Script URL이 저장되었습니다. 앞으로 복사하는 폴더 링크에 이 URL이 포함됩니다.');
             }
 
             async function autoGradeNewSubmissions() {
@@ -1671,8 +1701,8 @@
                     div.className = 'card w-64 cursor-pointer hover:bg-white-10 transition flex flex-col justify-between';
                     div.onclick = () => openGroupFolder(groupName);
 
-                    // Generate folder link
-                    const folderLink = window.location.origin + "?quiz=" + spreadsheetId + "&group=" + encodeURIComponent(groupName);
+                    // Generate folder link (appsScriptUrl = 이 스프레드시트에 연결된 웹앱 URL이어야 함)
+                    const folderLink = window.location.origin + (window.location.pathname || '/') + "?quiz=" + spreadsheetId + "&group=" + encodeURIComponent(groupName) + "&appsScriptUrl=" + encodeURIComponent(localStorage.getItem('teacher_apps_script_url') || APPS_CRIPT_URL);
 
                     // Folder Icon SVG
                     div.innerHTML = `
@@ -2736,7 +2766,7 @@ ${feedback}
                     alert("연동된 스프레드시트가 없습니다. 먼저 로그인을 완료해주세요.");
                     return;
                 }
-                window.open(`https://docs.google.com/spreadsheets/d/${spreadsheetId}`, '_blank');
+                window.open('https://docs.google.com/spreadsheets/d/' + spreadsheetId, '_blank');
             }
 
             function copyFolderLink(link, groupName) {
@@ -3037,8 +3067,9 @@ ${feedback}
                 const quizId = urlParams.get('quiz');
                 const groupFilter = urlParams.get('group');
                 if (quizId) {
-                    // 학생 모드 활성화
+                    // 학생 모드 활성화 (퀴즈 시트와 동일한 스프레드시트의 Apps Script URL 사용)
                     spreadsheetId = quizId;
+                    studentAppsScriptUrl = urlParams.get('appsScriptUrl') || APPS_CRIPT_URL;
                     localStorage.setItem('grading_spreadsheet_id', quizId);
                     if (groupFilter) {
                         localStorage.setItem('student_group_filter', decodeURIComponent(groupFilter));
@@ -3447,7 +3478,7 @@ ${feedback}
                             answer: a.answer
                         };
 
-                        await fetch(APPS_CRIPT_URL, {
+                        await fetch(getAppsScriptUrl(), {
                             method: 'POST',
                             mode: 'no-cors',
                             headers: {
@@ -3569,7 +3600,7 @@ ${feedback}
                     }
 
                     try {
-                        const response = await fetch(APPS_CRIPT_URL + '?type=saveScore', {
+                        const response = await fetch(getAppsScriptUrl() + '?type=saveScore', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -3627,3 +3658,4 @@ ${feedback}
 </body>
 
 </html>
+
