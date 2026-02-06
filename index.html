@@ -3603,7 +3603,7 @@ ${feedback}
                         const response = await fetch(getAppsScriptUrl() + '?type=saveScore', {
                             method: 'POST',
                             headers: {
-                                'Content-Type': 'application/json',
+                                'Content-Type': 'text/plain',
                             },
                             body: JSON.stringify({
                                 timestamp: new Date().toISOString(),
